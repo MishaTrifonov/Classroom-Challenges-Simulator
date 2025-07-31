@@ -1,3 +1,6 @@
-This is the final project of :
+The Class Simulator
+A 3D simulation game where players experience and interact within a virtual classroom environment. Built using Unity and C#, this project showcases gameplay mechanics, 3D environment design, and player interactions.
 
-Reemi Halabi and Michael Trifonov
+By: 
+Reemy Halabi
+Michael Trifonov
