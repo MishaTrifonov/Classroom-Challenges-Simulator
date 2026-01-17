@@ -52,7 +52,8 @@ public class StudentVisualFeedback : MonoBehaviour
     {
         // Auto-find references if not assigned
         if (studentAgent == null)
-            studentAgent = GetComponent<StudentAgent>();
+            studentAgent = GetComponentInParent<StudentAgent>();
+
         
         if (bodyRenderer == null)
             bodyRenderer = GetComponentInChildren<Renderer>();

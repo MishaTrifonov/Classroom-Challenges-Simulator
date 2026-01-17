@@ -15,6 +15,10 @@ public class ClassroomManager : MonoBehaviour
     public GameObject studentPrefab;
     public Transform studentSpawnParent;
     public List<StudentAgent> activeStudents = new List<StudentAgent>();
+
+    [Header("Student Spawning")]
+    public StudentSpawner studentSpawner;
+
     
     [Header("Teacher Interface")]
     public TeacherUI teacherUI;
@@ -86,19 +90,24 @@ public class ClassroomManager : MonoBehaviour
 
         currentScenario = scenario;
         
-        // Clear existing students
         ClearClassroom();
-        
-        // Spawn students based on scenario
-        SpawnStudents(scenario.studentProfiles);
-        
+
+        if (studentSpawner == null)
+        {
+            Debug.LogError("StudentSpawner not assigned!");
+            return;
+        }
+
+        activeStudents = studentSpawner.Spawn(scenario.studentProfiles);
+
+
         Debug.Log($"Loaded scenario: {scenario.scenarioName} with {activeStudents.Count} students");
     }
 
     /// <summary>
     /// Spawn student agents from profiles
     /// </summary>
-    void SpawnStudents(List<StudentProfile> profiles)
+   /* void SpawnStudents(List<StudentProfile> profiles)
     {
         if (studentPrefab == null || studentSpawnParent == null)
         {
@@ -106,35 +115,51 @@ public class ClassroomManager : MonoBehaviour
             return;
         }
 
-        for (int i = 0; i < profiles.Count; i++)
+        // Collect spawn points (children of studentSpawnParent)
+        List<Transform> spawnPoints = new List<Transform>();
+        for (int i = 0; i < studentSpawnParent.childCount; i++)
+            spawnPoints.Add(studentSpawnParent.GetChild(i));
+
+        if (spawnPoints.Count == 0)
+        {
+            Debug.LogError("No spawn points found under studentSpawnParent!");
+            return;
+        }
+
+        // Optional: sort by name so SpawnPoint_01,02,03 order is stable
+        spawnPoints = spawnPoints.OrderBy(t => t.name).ToList();
+
+        int countToSpawn = Mathf.Min(profiles.Count, spawnPoints.Count);
+
+        for (int i = 0; i < countToSpawn; i++)
         {
             StudentProfile profile = profiles[i];
-            
-            // Calculate spawn position (grid layout)
-            Vector3 spawnPos = CalculateStudentPosition(i, profiles.Count);
-            
-            // Instantiate student
-            GameObject studentObj = Instantiate(studentPrefab, spawnPos, Quaternion.identity, studentSpawnParent);
+            Transform point = spawnPoints[i];
+
+            GameObject studentObj = Instantiate(studentPrefab, point.position, point.rotation, this.transform);
             StudentAgent student = studentObj.GetComponent<StudentAgent>();
-            
+
             if (student != null)
             {
-                // Configure student from profile
                 student.studentId = profile.id;
                 student.studentName = profile.name;
                 student.extroversion = profile.extroversion;
                 student.sensitivity = profile.sensitivity;
                 student.rebelliousness = profile.rebelliousness;
                 student.academicMotivation = profile.academicMotivation;
-                
-                // Set initial emotional state
+
                 student.emotions.Happiness = profile.initialHappiness;
                 student.emotions.Boredom = profile.initialBoredom;
-                
+
                 activeStudents.Add(student);
             }
-        }
-    }
+            }
+
+        if (profiles.Count > spawnPoints.Count)
+            Debug.LogWarning($"Not enough seats! Profiles: {profiles.Count}, SpawnPoints: {spawnPoints.Count}");
+        }*/
+
+    
     public void ExecuteBagItem(BagItemType item)
     {
         // Classwide effect using your existing system

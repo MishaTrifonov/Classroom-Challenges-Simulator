@@ -3,7 +3,10 @@ guid: 7ff4a7fa8e267424ea762bbf47efec3b
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - studentPrefab: {fileID: 6951650713576510801, guid: 9dc8e3ed449b4db40aa3ad4131500ae6, type: 3}
+  - studentSpawnParent: {instanceID: 0}
+  - teacherUI: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

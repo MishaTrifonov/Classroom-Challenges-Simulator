@@ -154,7 +154,9 @@ public class ScenarioSelectionUI : MonoBehaviour
         if (userInfoText != null && authManager != null && authManager.currentUser != null)
         {
             var user = authManager.currentUser;
-            userInfoText.text = $"Welcome, {user.FullName}\nRole: {user.Role}\nSessions: {user.SessionCount}";
+            //userInfoText.text = $"Welcome, {user.FullName}\nRole: {user.Role}\nSessions: {user.SessionCount}";
+            userInfoText.text = $"Welcome, {user.fullName}\nRole: {user.role}\nSessions: {user.sessionCount}";
+
         }
     }
 

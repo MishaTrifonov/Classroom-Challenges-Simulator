@@ -43,19 +43,24 @@ public class TeacherUI : MonoBehaviour
     [Header("Session Info")]
     private float sessionStartTime;
 
+    
+
+
     void Start()
     {
         sessionStartTime = Time.time;
 
         // Wire up button listeners
         SetupButtons();
-
+        
         // Hide feedback panel initially
         if (feedbackPanel != null)
             feedbackPanel.SetActive(false);
 
         if (actionMenu != null)
             actionMenu.SetActive(false);
+
+        
     }
 
     void Update()
@@ -124,22 +129,18 @@ public class TeacherUI : MonoBehaviour
     /// Detect student clicks via raycast
     /// </summary>
     void CheckForStudentSelection()
+{
+    if (Input.GetMouseButtonDown(0))
     {
-        if (Input.GetMouseButtonDown(0))
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f))
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-
-            if (Physics.Raycast(ray, out hit, 100f))
-            {
-                StudentAgent student = hit.collider.GetComponent<StudentAgent>();
-                if (student != null)
-                {
-                    SelectStudent(student);
-                }
-            }
+            StudentAgent student = hit.collider.GetComponentInParent<StudentAgent>();
+            if (student != null)
+                SelectStudent(student);
         }
     }
+}
 
     /// <summary>
     /// Select a student for targeted actions

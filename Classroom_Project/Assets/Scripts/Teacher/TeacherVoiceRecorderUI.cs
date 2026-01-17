@@ -5,8 +5,8 @@ using UnityEngine;
 public class TeacherVoiceRecorderUI : MonoBehaviour
 {
     [Header("UI")]
-    public TMP_Text transcriptTopText;     // הטקסט שמופיע למעלה במסך
-    public TMP_Text statusText;            // אופציונלי - אם אין לך, תשאירי ריק
+    public TMP_Text transcriptTopText;     // text shown at top
+    public TMP_Text statusText;            // optional
 
     [Header("Recording")]
     public int sampleRate = 16000;
@@ -17,9 +17,25 @@ public class TeacherVoiceRecorderUI : MonoBehaviour
     private bool isRecording;
     private Coroutine fakeTranscribeRoutine;
 
+    // WebGL: Unity Microphone API is not supported. We simulate.
+#if UNITY_WEBGL && !UNITY_EDITOR
+    private const bool MICROPHONE_SUPPORTED = false;
+#else
+    private const bool MICROPHONE_SUPPORTED = true;
+#endif
+
     void Start()
     {
-        // בוחר מיקרופון ראשון שקיים
+        if (!MICROPHONE_SUPPORTED)
+        {
+            micDevice = null;
+            SetStatus("WebGL: Microphone not supported (simulated)");
+            if (transcriptTopText != null) transcriptTopText.text = "";
+            return;
+        }
+
+#if !UNITY_WEBGL || UNITY_EDITOR
+        // Pick first available microphone
         if (Microphone.devices != null && Microphone.devices.Length > 0)
         {
             micDevice = Microphone.devices[0];
@@ -29,25 +45,32 @@ public class TeacherVoiceRecorderUI : MonoBehaviour
         {
             micDevice = null;
             SetStatus("No microphone detected");
-            if (transcriptTopText != null)
-                transcriptTopText.text = "";
+            if (transcriptTopText != null) transcriptTopText.text = "";
         }
+#endif
     }
 
     public void StartRecording()
     {
-        if (isRecording)
-            return;
+        if (isRecording) return;
 
+        StopFakeTranscribeIfRunning();
+
+        if (!MICROPHONE_SUPPORTED)
+        {
+            isRecording = true;
+            if (transcriptTopText != null) transcriptTopText.text = "Recording... (simulated)";
+            SetStatus("Recording (simulated)");
+            return;
+        }
+
+#if !UNITY_WEBGL || UNITY_EDITOR
         if (string.IsNullOrEmpty(micDevice))
         {
             SetStatus("No microphone");
             return;
         }
 
-        StopFakeTranscribeIfRunning();
-
-        // התחלה נקייה
         clip = null;
 
         if (transcriptTopText != null)
@@ -57,15 +80,27 @@ public class TeacherVoiceRecorderUI : MonoBehaviour
 
         clip = Microphone.Start(micDevice, false, maxSeconds, sampleRate);
         isRecording = true;
+#endif
     }
 
     public void StopRecording()
     {
-        if (!isRecording)
-            return;
+        if (!isRecording) return;
 
-        if (string.IsNullOrEmpty(micDevice))
+        if (!MICROPHONE_SUPPORTED)
+        {
+            isRecording = false;
+
+            if (transcriptTopText != null)
+                transcriptTopText.text = "Processing... (simulated)";
+
+            SetStatus("Processing (simulated)");
+            fakeTranscribeRoutine = StartCoroutine(FakeTranscribe());
             return;
+        }
+
+#if !UNITY_WEBGL || UNITY_EDITOR
+        if (string.IsNullOrEmpty(micDevice)) return;
 
         int pos = Microphone.GetPosition(micDevice);
         Microphone.End(micDevice);
@@ -85,27 +120,26 @@ public class TeacherVoiceRecorderUI : MonoBehaviour
 
         SetStatus("Processing");
 
-        // כרגע דמה כדי לוודא שה-UI עובד.
-        // בהמשך מחליפים לפונקציית תמלול אמיתית.
+        // for now: fake transcription
         fakeTranscribeRoutine = StartCoroutine(FakeTranscribe());
+#endif
     }
 
     public void ResetRecording()
     {
-        // עצירה אם מקליטים
-        if (isRecording && !string.IsNullOrEmpty(micDevice))
+        if (MICROPHONE_SUPPORTED)
         {
-            Microphone.End(micDevice);
-            isRecording = false;
+#if !UNITY_WEBGL || UNITY_EDITOR
+            if (isRecording && !string.IsNullOrEmpty(micDevice))
+                Microphone.End(micDevice);
+#endif
         }
 
+        isRecording = false;
         StopFakeTranscribeIfRunning();
-
         clip = null;
 
-        if (transcriptTopText != null)
-            transcriptTopText.text = "";
-
+        if (transcriptTopText != null) transcriptTopText.text = "";
         SetStatus("Reset");
     }
 
@@ -131,9 +165,7 @@ public class TeacherVoiceRecorderUI : MonoBehaviour
 
     private void SetStatus(string msg)
     {
-        if (statusText != null)
-            statusText.text = msg;
-
+        if (statusText != null) statusText.text = msg;
         Debug.Log(msg);
     }
 }

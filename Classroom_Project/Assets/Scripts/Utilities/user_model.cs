@@ -1,80 +1,63 @@
 using System;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
 
-/// <summary>
-/// Represents a user in the system.
-/// This matches the structure in MongoDB database.
-/// Each user has credentials, role, and session history.
-/// </summary>
 [Serializable]
 public class UserModel
 {
-    // MongoDB automatically creates this ID
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; }
+    // In WebGL/Unity we just store the string id we receive from the backend (Mongo ObjectId as string)
+    public string id;
 
-    // Login credentials
-    [BsonElement("username")]
-    public string Username { get; set; }
-
-    [BsonElement("passwordHash")]
-    public string PasswordHash { get; set; } // We store hashed passwords, never plain text!
+    // Login credentials (still hashed on the backend!)
+    public string username;
+    public string passwordHash;
 
     // User information
-    [BsonElement("email")]
-    public string Email { get; set; }
-
-    [BsonElement("fullName")]
-    public string FullName { get; set; }
+    public string email;
+    public string fullName;
 
     // Role determines what user can do
-    [BsonElement("role")]
-    public UserRole Role { get; set; }
+    public UserRole role = UserRole.Student;
 
-    // Tracking
-    [BsonElement("createdAt")]
-    public DateTime CreatedAt { get; set; }
+    // Tracking (store as ISO string if you want to be super safe across JSON libs)
+    // If your backend sends real ISO strings, keep these as string.
+    // If you control both sides and parse manually, you can change to DateTime.
+    public string createdAt;
+    public string lastLogin;
 
-    [BsonElement("lastLogin")]
-    public DateTime LastLogin { get; set; }
-
-    [BsonElement("sessionCount")]
-    public int SessionCount { get; set; }
+    public int sessionCount = 0;
 
     // Permissions
-    [BsonElement("allowedScenarios")]
-    public string[] AllowedScenarios { get; set; } // Which scenarios this user can access
+    // Empty or null => allow all scenarios
+    public string[] allowedScenarios;
 
-    [BsonElement("isActive")]
-    public bool IsActive { get; set; } // Can this user log in?
+    public bool isActive = true;
 
-    /// <summary>
-    /// Create a new user with default values
-    /// </summary>
     public UserModel()
     {
-        CreatedAt = DateTime.Now;
-        IsActive = true;
-        SessionCount = 0;
-        Role = UserRole.Student;
-        AllowedScenarios = new string[] { }; // Empty means all scenarios allowed
+        // For new local instances (not coming from backend)
+        createdAt = DateTime.UtcNow.ToString("o"); // ISO-8601
+        lastLogin = null;
+        isActive = true;
+        sessionCount = 0;
+        role = UserRole.Student;
+
+        // Empty means all scenarios allowed (as you intended)
+        allowedScenarios = Array.Empty<string>();
     }
 
-    /// <summary>
-    /// Check if this user can access a specific scenario
-    /// </summary>
     public bool CanAccessScenario(string scenarioName)
     {
-        // If AllowedScenarios is empty or null, user can access all scenarios
-        if (AllowedScenarios == null || AllowedScenarios.Length == 0)
+        if (string.IsNullOrWhiteSpace(scenarioName))
+            return false;
+
+        // If allowedScenarios is empty or null, user can access all scenarios
+        if (allowedScenarios == null || allowedScenarios.Length == 0)
             return true;
 
-        // Check if scenario is in allowed list
-        foreach (string allowed in AllowedScenarios)
+        for (int i = 0; i < allowedScenarios.Length; i++)
         {
-            if (allowed.Equals(scenarioName, StringComparison.OrdinalIgnoreCase))
+            var allowed = allowedScenarios[i];
+            if (!string.IsNullOrEmpty(allowed) &&
+                allowed.Equals(scenarioName, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
 
@@ -82,9 +65,6 @@ public class UserModel
     }
 }
 
-/// <summary>
-/// Different user roles with different permissions
-/// </summary>
 public enum UserRole
 {
     Student,        // Regular trainee teacher
@@ -92,24 +72,18 @@ public enum UserRole
     Administrator   // Can create users and manage system
 }
 
-/// <summary>
-/// Data structure for login attempts
-/// </summary>
 [Serializable]
 public class LoginRequest
 {
-    public string Username { get; set; }
-    public string Password { get; set; }
+    public string username;
+    public string password;
 }
 
-/// <summary>
-/// Data returned after successful login
-/// </summary>
 [Serializable]
 public class LoginResponse
 {
-    public bool Success { get; set; }
-    public string Message { get; set; }
-    public UserModel User { get; set; }
-    public string SessionToken { get; set; } // For maintaining login state
+    public bool success;
+    public string message;
+    public UserModel user;
+    public string sessionToken; // For maintaining login state
 }

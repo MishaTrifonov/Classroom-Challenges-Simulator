@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: dce4616fe5c742343b0d5221b6b1f3b4
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - studentPrefab: {fileID: 2728903940092985898, guid: d7978fed0d554424aa068e61febd3f39, type: 3}
+  - seatParent: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

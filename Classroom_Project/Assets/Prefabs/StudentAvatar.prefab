@@ -700,8 +700,7 @@ GameObject:
   - component: {fileID: 110565854552668530}
   - component: {fileID: 1005658720629112754}
   - component: {fileID: 9180727486330233911}
-  - component: {fileID: 8157541564899818478}
-  - component: {fileID: 899201028843804278}
+  - component: {fileID: 7093544725978706419}
   m_Layer: 0
   m_Name: StudentAvatar
   m_TagString: Untagged
@@ -718,7 +717,7 @@ Transform:
   m_GameObject: {fileID: 6951650713576510801}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: 0}
+  m_LocalPosition: {x: -0.01, y: 1, z: -0.01}
   m_LocalScale: {x: 0.8, y: 1, z: 0.8}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -743,7 +742,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6951650713576510801}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -795,74 +794,30 @@ CapsuleCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_Radius: 0.5
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &8157541564899818478
-MonoBehaviour:
+--- !u!95 &7093544725978706419
+Animator:
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6951650713576510801}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2aafe12dadce5ad49a77cf939a5a3c04, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  studentId: 
-  studentName: 
-  emotions:
-    Happiness: 5
-    Sadness: 1
-    Frustration: 1
-    Boredom: 1
-    Anger: 1
-    happinessDecay: 0.01
-    sadnessDecay: 0.015
-    frustrationDecay: 0.02
-    boredomGrowth: 0.02
-    angerDecay: 0.025
-  extroversion: 0.5
-  sensitivity: 0.5
-  rebelliousness: 0.3
-  academicMotivation: 0.6
-  currentState: 0
-  influenceRadius: 3
-  animator: {fileID: 0}
-  studentRenderer: {fileID: 0}
-  stateCheckInterval: 2
---- !u!114 &899201028843804278
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6951650713576510801}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0211a762242dc714291032b954c0353e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  studentAgent: {fileID: 8157541564899818478}
-  bodyRenderer: {fileID: 1005658720629112754}
-  emotionalIndicator: {fileID: 2633061049068960081}
-  emotionalIndicatorRenderer: {fileID: 8396595717756062935}
-  nameTagCanvas: {fileID: 3704956537259648088}
-  nameText: {fileID: 1193572921270646340}
-  stateText: {fileID: 8303090234005249270}
-  happyColor: {r: 0.3, g: 1, b: 0.3, a: 1}
-  sadColor: {r: 0.3, g: 0.5, b: 1, a: 1}
-  angryColor: {r: 1, g: 0.3, b: 0.3, a: 1}
-  boredColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
-  frustratedColor: {r: 1, g: 0.7, b: 0.3, a: 1}
-  neutralColor: {r: 1, g: 1, b: 1, a: 1}
-  colorTransitionSpeed: 2
-  bobSpeed: 1
-  bobHeight: 0.1
-  isSelected: 0
-  selectionColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  selectionRing: {fileID: 1866320709918087511}
+  m_Enabled: 0
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: a531fe4aba110614a953a9a3022f06ac, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0

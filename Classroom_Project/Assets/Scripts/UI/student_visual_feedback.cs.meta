@@ -3,7 +3,15 @@ guid: 0211a762242dc714291032b954c0353e
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - studentAgent: {fileID: 8252126692699294816, guid: 1a4fab333c186bf4090d87692ec7ae15, type: 3}
+  - bodyRenderer: {instanceID: 0}
+  - emotionalIndicator: {instanceID: 0}
+  - emotionalIndicatorRenderer: {instanceID: 0}
+  - nameTagCanvas: {instanceID: 0}
+  - nameText: {instanceID: 0}
+  - stateText: {instanceID: 0}
+  - selectionRing: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
