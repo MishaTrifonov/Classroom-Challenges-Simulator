@@ -74,14 +74,14 @@ public class ScenarioSelectionUI : MonoBehaviour
 
         if (authManager == null)
         {
-            Debug.LogError("AuthenticationManager not found!");
-            return;
+            Debug.LogWarning("AuthenticationManager not found! Scenario access will not be restricted.");
+            // Continue without authentication - all scenarios will be accessible
         }
 
         if (scenarioLoader == null)
         {
-            Debug.LogError("ScenarioLoader not found!");
-            return;
+            Debug.LogWarning("ScenarioLoader not found in Start. Will try to find it later when needed.");
+            // Don't return - continue initialization
         }
 
         // Set up button listeners
@@ -168,6 +168,17 @@ public class ScenarioSelectionUI : MonoBehaviour
         if (scenarioListContainer == null)
             return;
 
+        // Ensure we have a scenarioLoader reference
+        if (scenarioLoader == null)
+        {
+            scenarioLoader = FindObjectOfType<ScenarioLoader>();
+            if (scenarioLoader == null)
+            {
+                Debug.LogError("ScenarioLoader not found! Cannot refresh scenario list. Please add ScenarioLoader component to the scene.");
+                return;
+            }
+        }
+
         Debug.Log("Refreshing scenario list...");
 
         // Clear existing buttons
@@ -214,7 +225,8 @@ public class ScenarioSelectionUI : MonoBehaviour
     /// </summary>
     void CreateScenarioButton(string scenarioFileName, int index)
     {
-        bool canAccess = authManager.CanAccessScenario(scenarioFileName);
+        // If no auth manager, allow access to all scenarios
+        bool canAccess = authManager == null || authManager.CanAccessScenario(scenarioFileName);
 
         GameObject buttonObj;
 

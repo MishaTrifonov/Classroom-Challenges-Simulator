@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class LoginUI : MonoBehaviour
 {
@@ -13,8 +14,9 @@ public class LoginUI : MonoBehaviour
     public TextMeshProUGUI messageText;
     public GameObject loadingIndicator;
 
-    [Header("Scene References")]
-    public GameObject scenarioSelectionScreen;
+    [Header("Scene Settings")]
+    [Tooltip("Name of the teacher home scene to load after login")]
+    public string teacherHomeSceneName = "TeacherHomeScreen";
 
     [Header("Visual Settings")]
     public Color errorColor = Color.red;
@@ -33,9 +35,6 @@ public class LoginUI : MonoBehaviour
 
         if (loadingIndicator != null)
             loadingIndicator.SetActive(false);
-
-        if (scenarioSelectionScreen != null)
-            scenarioSelectionScreen.SetActive(false);
 
         ShowMessage("", normalColor);
     }
@@ -87,7 +86,7 @@ public class LoginUI : MonoBehaviour
     {
         Debug.Log($"Login successful! Welcome {response.user.fullName}");
         ShowMessage($"Welcome, {response.user.fullName}!", successColor);
-        Invoke(nameof(TransitionToScenarioSelection), 1f);
+        Invoke(nameof(TransitionToTeacherHome), 1f);
     }
 
     void OnLoginFailure(string message)
@@ -98,14 +97,10 @@ public class LoginUI : MonoBehaviour
         ShakeLoginPanel();
     }
 
-    void TransitionToScenarioSelection()
+    void TransitionToTeacherHome()
     {
-        loginPanel.SetActive(false);
-        scenarioSelectionScreen.SetActive(true);
-
-        var scenarioUI = scenarioSelectionScreen.GetComponent<ScenarioSelectionUI>();
-        if (scenarioUI != null)
-            scenarioUI.RefreshScenarioList();
+        // Load the Teacher Home Screen scene
+        SceneManager.LoadScene(teacherHomeSceneName);
     }
 
     void ShowMessage(string message, Color color)

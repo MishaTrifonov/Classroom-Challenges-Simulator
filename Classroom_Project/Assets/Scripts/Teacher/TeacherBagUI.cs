@@ -9,6 +9,8 @@ public class TeacherBagUI : MonoBehaviour
 
     [Header("Refs")]
     public ClassroomManager classroomManager;
+    [Tooltip("Reference to TeacherUI to check for selected student")]
+    public TeacherUI teacherUI;
 
     [Header("Animation")]
     public CanvasGroup bagGroup;
@@ -97,6 +99,60 @@ public class TeacherBagUI : MonoBehaviour
         bagRect.localScale = open ? openScale : closedScale;
         bagGroup.interactable = open;
         bagGroup.blocksRaycasts = open;
+    }
+
+    /// <summary>
+    /// Execute a bag item. If a student is selected, use it on that student.
+    /// Otherwise, apply it classwide.
+    /// This method can be called from Unity button onClick events.
+    /// </summary>
+    public void UseBagItem(BagItemType item)
+    {
+        if (classroomManager == null)
+        {
+            Debug.LogError("TeacherBagUI: ClassroomManager reference is missing!");
+            return;
+        }
+
+        // Check if a student is selected
+        StudentAgent selectedStudent = null;
+        if (teacherUI != null)
+        {
+            selectedStudent = teacherUI.GetSelectedStudent();
+        }
+
+        if (selectedStudent != null)
+        {
+            // Use bag item on selected student
+            classroomManager.ExecuteBagItemOnStudent(item, selectedStudent);
+            Debug.Log($"Bag item {item} used on selected student: {selectedStudent.studentName}");
+        }
+        else
+        {
+            // Use bag item classwide
+            classroomManager.ExecuteBagItem(item);
+            Debug.Log($"Bag item {item} used classwide");
+        }
+    }
+
+    /// <summary>
+    /// Use bag item on a specific student (can be called externally)
+    /// </summary>
+    public void UseBagItemOnStudent(BagItemType item, StudentAgent student)
+    {
+        if (classroomManager == null)
+        {
+            Debug.LogError("TeacherBagUI: ClassroomManager reference is missing!");
+            return;
+        }
+
+        if (student == null)
+        {
+            Debug.LogWarning("TeacherBagUI: Cannot use bag item on null student");
+            return;
+        }
+
+        classroomManager.ExecuteBagItemOnStudent(item, student);
     }
 
 }
