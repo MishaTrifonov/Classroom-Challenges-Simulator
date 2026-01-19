@@ -13,6 +13,7 @@
 { "pid": 35942, "tid": -1, "ph": "M", "name": "process_name", "args": { "name": "netcorerun.dll" } },
 { "pid": 35942, "tid": -1, "ph": "M", "name": "process_sort_index", "args": { "sort_index": "-1" } },
 { "pid": 35942, "tid": 1, "ph": "M", "name": "thread_name", "args": { "name": "" } },
+<<<<<<< HEAD
 { "pid": 35942, "tid": 1, "ts": 1768762187862955, "dur": 1152762, "ph": "X", "name": "BuildProgram", "args": {} },
 { "pid": 35942, "tid": 1, "ts": 1768762187864847, "dur": 180647, "ph": "X", "name": "BuildProgramContextConstructor", "args": {} },
 { "pid": 35942, "tid": 1, "ts": 1768762188818757, "dur": 16457, "ph": "X", "name": "OutputData.Write", "args": {} },
@@ -21,3 +22,12 @@
 { "pid": 35942, "tid": 1, "ts": 1768762189044780, "dur": 2032, "ph": "X", "name": "", "args": {} },
 { "pid": 35942, "tid": 1, "ts": 1768762189043868, "dur": 3321, "ph": "X", "name": "Write chrome-trace events", "args": {} },
 >>>>>>> d0d6acf1 (Update .gitignore to include Visual Studio/Unity generated files and remove unnecessary project files. Deleted unused project settings and assets to streamline the project structure.)
+=======
+{ "pid": 35942, "tid": 1, "ts": 1768847589769187, "dur": 748423, "ph": "X", "name": "BuildProgram", "args": {} },
+{ "pid": 35942, "tid": 1, "ts": 1768847589773219, "dur": 165667, "ph": "X", "name": "BuildProgramContextConstructor", "args": {} },
+{ "pid": 35942, "tid": 1, "ts": 1768847590408793, "dur": 7351, "ph": "X", "name": "OutputData.Write", "args": {} },
+{ "pid": 35942, "tid": 1, "ts": 1768847590416151, "dur": 101423, "ph": "X", "name": "Backend.Write", "args": {} },
+{ "pid": 35942, "tid": 1, "ts": 1768847590418664, "dur": 71386, "ph": "X", "name": "JsonToString", "args": {} },
+{ "pid": 35942, "tid": 1, "ts": 1768847590533067, "dur": 2440, "ph": "X", "name": "", "args": {} },
+{ "pid": 35942, "tid": 1, "ts": 1768847590532340, "dur": 4369, "ph": "X", "name": "Write chrome-trace events", "args": {} },
+>>>>>>> ed122d69 (fixlargefile first reemy front commit added voice rec)

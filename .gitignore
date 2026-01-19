@@ -5,7 +5,6 @@ Logs/
 UserSettings/
 Build/
 Builds/
-Library/
 
 # Visual Studio / Unity generated
 *.csproj
