@@ -191,6 +191,74 @@ public class ClassroomManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Execute a bag item on a specific student instead of classwide
+    /// </summary>
+    public void ExecuteBagItemOnStudent(BagItemType item, StudentAgent student)
+    {
+        if (student == null)
+        {
+            Debug.LogWarning("Cannot execute bag item on null student");
+            return;
+        }
+
+        // Convert bag item to appropriate teacher action for the student
+        ActionType actionType;
+        string context = "";
+
+        switch (item)
+        {
+            case BagItemType.Ruler:
+                // "Strict": may raise attention but increases negative emotion a bit
+                actionType = ActionType.Yell;
+                context = $"Teacher used ruler on {student.studentName}";
+                break;
+
+            case BagItemType.Game:
+                // Fun: reduces boredom / improves mood - use praise and give break
+                actionType = ActionType.Praise;
+                context = $"Teacher engaged {student.studentName} with a game";
+                // Also reduce boredom
+                TeacherAction breakAction = new TeacherAction
+                {
+                    Type = ActionType.GiveBreak,
+                    TargetStudentId = student.studentId,
+                    Context = $"Quick game break for {student.studentName}"
+                };
+                student.ReceiveTeacherAction(breakAction);
+                break;
+
+            case BagItemType.Book:
+                // Structure: call student to participate
+                actionType = ActionType.CallToBoard;
+                context = $"Teacher used book to engage {student.studentName}";
+                break;
+
+            case BagItemType.Music:
+                // Calm: give break
+                actionType = ActionType.GiveBreak;
+                context = $"Calming music for {student.studentName}";
+                break;
+
+            default:
+                actionType = ActionType.Praise;
+                context = $"Bag item used on {student.studentName}";
+                break;
+        }
+
+        // Execute the action on the specific student
+        TeacherAction action = new TeacherAction
+        {
+            Type = actionType,
+            TargetStudentId = student.studentId,
+            Context = context
+        };
+
+        ExecuteTeacherAction(action);
+
+        Debug.Log($"Bag item {item} used on student: {student.studentName}");
+    }
+
+    /// <summary>
     /// Calculate student seat position in classroom grid
     /// </summary>
     Vector3 CalculateStudentPosition(int index, int totalStudents)
@@ -358,6 +426,9 @@ public class ClassroomManager : MonoBehaviour
     {
         // TODO: Implement MongoDB integration
         Debug.Log("Session saved to database (placeholder)");
+        
+        // Also save to local session history for UI display
+        TeacherHomeSceneUI.SaveSessionToHistory(report);
     }
 }
 

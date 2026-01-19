@@ -1,5 +1,6 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 using System.Collections.Generic;
 
@@ -29,6 +30,12 @@ public class TeacherUI : MonoBehaviour
     [Header("Student Selection")]
     public TextMeshProUGUI selectedStudentText;
     private StudentAgent selectedStudent;
+    [Tooltip("Default text to show when no student is selected")]
+    public string defaultStudentText = "No student selected";
+
+    [Header("Student Info Panel")]
+    [Tooltip("Reference to StudentInfoPanelUI component")]
+    public StudentInfoPanelUI studentInfoPanel;
 
     [Header("Feedback Panel")]
     public GameObject feedbackPanel;
@@ -60,7 +67,9 @@ public class TeacherUI : MonoBehaviour
         if (actionMenu != null)
             actionMenu.SetActive(false);
 
-        
+        // Set default text for selected student
+        if (selectedStudentText != null && string.IsNullOrEmpty(selectedStudentText.text))
+            selectedStudentText.text = defaultStudentText;
     }
 
     void Update()
@@ -129,18 +138,36 @@ public class TeacherUI : MonoBehaviour
     /// Detect student clicks via raycast
     /// </summary>
     void CheckForStudentSelection()
-{
-    if (Input.GetMouseButtonDown(0))
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit, 100f))
+        if (Input.GetMouseButtonDown(0))
         {
-            StudentAgent student = hit.collider.GetComponentInParent<StudentAgent>();
-            if (student != null)
-                SelectStudent(student);
+            // Check if we're clicking on a UI element
+            bool clickingOnUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+            
+            // Always try to raycast for 3D objects (students) first
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            
+            if (Physics.Raycast(ray, out hit, 100f))
+            {
+                StudentAgent student = hit.collider.GetComponentInParent<StudentAgent>();
+                if (student != null)
+                {
+                    // Always allow clicking on students, regardless of UI
+                    SelectStudent(student);
+                    return;
+                }
+            }
+            
+            // If we didn't hit a student, handle deselection
+            // Only deselect if we're NOT clicking on UI
+            if (!clickingOnUI)
+            {
+                // Clicked on empty space or something that's not a student
+                DeselectStudent();
+            }
         }
     }
-}
 
     /// <summary>
     /// Select a student for targeted actions
@@ -156,11 +183,50 @@ public class TeacherUI : MonoBehaviour
                                       $"Emotions: {student.emotions}";
         }
 
+        // Show student info panel with detailed vectors
+        if (studentInfoPanel != null)
+        {
+            studentInfoPanel.ShowStudentInfo(student);
+        }
+
         // Show action menu
         if (actionMenu != null)
             actionMenu.SetActive(true);
 
         Debug.Log($"Selected student: {student.studentName}");
+    }
+
+    /// <summary>
+    /// Deselect the currently selected student and reset UI
+    /// </summary>
+    public void DeselectStudent()
+    {
+        selectedStudent = null;
+
+        if (selectedStudentText != null)
+        {
+            selectedStudentText.text = defaultStudentText;
+        }
+
+        // Hide student info panel
+        if (studentInfoPanel != null)
+        {
+            studentInfoPanel.ClosePanel();
+        }
+
+        // Hide action menu
+        if (actionMenu != null)
+            actionMenu.SetActive(false);
+
+        Debug.Log("Student deselected");
+    }
+
+    /// <summary>
+    /// Get the currently selected student
+    /// </summary>
+    public StudentAgent GetSelectedStudent()
+    {
+        return selectedStudent;
     }
 
     /// <summary>
