@@ -167,7 +167,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5588c83234959c84db3b9efe287484f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dashboardPanel: {fileID: 0}
+  dashboardPanel: {fileID: 1966405695}
   startSessionButton: {fileID: 574780781}
   supervisorFeedbackButton: {fileID: 995111831}
   sessionHistoryButton: {fileID: 1121609468}

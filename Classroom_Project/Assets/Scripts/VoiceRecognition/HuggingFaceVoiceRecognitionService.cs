@@ -16,6 +16,7 @@ public class HuggingFaceVoiceRecognitionService : MonoBehaviour
     public VoiceRecognitionProvider provider = VoiceRecognitionProvider.HuggingFace;
     
     [Tooltip("HuggingFace API Token")]
+    public string huggingFaceToken;
     
     [Tooltip("Language code (e.g., 'en', 'he' for Hebrew)")]
     public string language = "he"; // Hebrew!
