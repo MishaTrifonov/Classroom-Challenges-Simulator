@@ -187,36 +187,45 @@ public class GameInitializer : MonoBehaviour
             return;
         }
 
-        // Load scenario from JSON
-        ScenarioConfig scenario = scenarioLoader.LoadScenario(scenarioFileName);
+        // Load scenario from server (async with callbacks)
+        scenarioLoader.LoadScenario(scenarioFileName,
+            onSuccess: (scenario) =>
+            {
+                if (scenario == null)
+                {
+                    Debug.LogError($"Failed to load scenario: {scenarioFileName}");
+                    Debug.LogError("Scenario object is null!");
+                    return;
+                }
 
-        if (scenario == null)
-        {
-            Debug.LogError($"Failed to load scenario: {scenarioFileName}");
-            Debug.LogError("Check that the JSON file exists in StreamingAssets/Scenarios/");
-            return;
-        }
+                if (scenario.studentProfiles == null || scenario.studentProfiles.Count == 0)
+                {
+                    Debug.LogError($"Scenario '{scenario.scenarioName}' has NO STUDENTS!");
+                    Debug.LogError("Check the JSON file - studentProfiles array might be empty.");
+                    return;
+                }
 
-        if (scenario.studentProfiles == null || scenario.studentProfiles.Count == 0)
-        {
-            Debug.LogError($"Scenario '{scenario.scenarioName}' has NO STUDENTS!");
-            Debug.LogError("Check the JSON file - studentProfiles array might be empty.");
-            return;
-        }
+                Debug.Log($"Scenario loaded successfully: {scenario.scenarioName}");
+                Debug.Log($"Student count in scenario: {scenario.studentProfiles.Count}");
 
-        Debug.Log($"Scenario loaded successfully: {scenario.scenarioName}");
-        Debug.Log($"Student count in scenario: {scenario.studentProfiles.Count}");
+                // Pass scenario to classroom manager
+                if (classroomManager == null)
+                {
+                    Debug.LogError("ClassroomManager is NULL! Cannot spawn students.");
+                    return;
+                }
 
-        // Pass scenario to classroom manager
-        if (classroomManager == null)
-        {
-            Debug.LogError("ClassroomManager is NULL! Cannot spawn students.");
-            return;
-        }
+                classroomManager.LoadScenario(scenario);
 
-        classroomManager.LoadScenario(scenario);
-
-        Debug.Log($"Scenario '{scenario.scenarioName}' started with {scenario.studentProfiles.Count} students!");
+                Debug.Log($"Scenario '{scenario.scenarioName}' started with {scenario.studentProfiles.Count} students!");
+            },
+            onError: (error) =>
+            {
+                Debug.LogError($"Failed to load scenario: {scenarioFileName}");
+                Debug.LogError($"Error: {error}");
+                Debug.LogError("Check that the scenario exists on the server or in StreamingAssets/Scenarios/");
+            }
+        );
     }
 
     /// <summary>

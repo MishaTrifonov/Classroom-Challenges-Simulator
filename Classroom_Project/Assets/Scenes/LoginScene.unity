@@ -2826,6 +2826,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92a912a5f5b6552449fbd3ae34149efe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  apiBaseUrl: https://backend-for-project.onrender.com
   defaultScenarioFileName: scenario_basic_classroom.json
   availableScenarios: []
 --- !u!4 &488461071
@@ -10444,7 +10445,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca4d120f702f8ac4fa3ed65e7f5a9ded, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  apiBaseUrl: https://backend-for-project.onrender.com/
+  apiBaseUrl: https://backend-for-project.onrender.com
   currentUser:
     id: 
     username: 

@@ -343,18 +343,34 @@ public class ScenarioSelectionUI : MonoBehaviour
         }
 
         selectedScenarioName = scenarioFileName;
-        selectedScenario = scenarioLoader.LoadScenario(scenarioFileName);
+        
+        // Load scenario from server (async with callbacks)
+        scenarioLoader.LoadScenario(scenarioFileName,
+            onSuccess: (scenario) =>
+            {
+                selectedScenario = scenario;
+                
+                if (selectedScenario == null)
+                {
+                    Debug.LogError($"Failed to load scenario: {scenarioFileName}");
+                    return;
+                }
 
-        if (selectedScenario == null)
-        {
-            Debug.LogError($"Failed to load scenario: {scenarioFileName}");
-            return;
-        }
+                DisplayScenarioDetails(selectedScenario);
 
-        DisplayScenarioDetails(selectedScenario);
-
-        if (startSimulationButton != null)
-            startSimulationButton.interactable = true;
+                if (startSimulationButton != null)
+                    startSimulationButton.interactable = true;
+            },
+            onError: (error) =>
+            {
+                Debug.LogError($"Failed to load scenario: {scenarioFileName}");
+                Debug.LogError($"Error: {error}");
+                selectedScenario = null;
+                
+                if (startSimulationButton != null)
+                    startSimulationButton.interactable = false;
+            }
+        );
     }
 
     void DisplayScenarioDetails(ScenarioConfig scenario)

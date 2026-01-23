@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
+using Microphone = UnityEngine.Microphone;
 
 /// <summary>
 /// Voice recognition service using HuggingFace Inference API.
@@ -65,14 +66,14 @@ public class HuggingFaceVoiceRecognitionService : MonoBehaviour
     void Start()
     {
         // Check microphone availability
-        if (Microphone.devices.Length == 0)
+        if (UnityEngine.Microphone.devices.Length == 0)
         {
             SetStatus("No microphone found!");
             Debug.LogError("HuggingFaceVoiceRecognitionService: No microphone devices found!");
         }
         else
         {
-            microphoneDevice = Microphone.devices[0];
+            microphoneDevice = UnityEngine.Microphone.devices[0];
             SetStatus("Ready - Click Record to start");
         }
     }
@@ -98,7 +99,7 @@ public class HuggingFaceVoiceRecognitionService : MonoBehaviour
         try
         {
             // Start recording
-            currentRecording = Microphone.Start(microphoneDevice, false, maxRecordingTime, 16000);
+            currentRecording = UnityEngine.Microphone.Start(microphoneDevice, false, maxRecordingTime, 16000);
             isRecording = true;
             SetStatus("Recording... Speak now");
             OnRecordingStarted?.Invoke();
@@ -127,7 +128,7 @@ public class HuggingFaceVoiceRecognitionService : MonoBehaviour
         try
         {
             // Stop microphone
-            Microphone.End(microphoneDevice);
+            UnityEngine.Microphone.End(microphoneDevice);
             isRecording = false;
             OnRecordingEnded?.Invoke();
             SetStatus("Processing with HuggingFace...");
@@ -323,7 +324,7 @@ public class HuggingFaceVoiceRecognitionService : MonoBehaviour
     {
         if (isRecording)
         {
-            Microphone.End(microphoneDevice);
+            UnityEngine.Microphone.End(microphoneDevice);
         }
     }
 }

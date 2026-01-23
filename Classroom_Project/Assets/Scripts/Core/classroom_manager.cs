@@ -45,8 +45,16 @@ public class ClassroomManager : MonoBehaviour
 
         if (!string.IsNullOrEmpty(selectedScenario) && loader != null)
         {
-            ScenarioConfig loadedScenario = loader.LoadScenario(selectedScenario);
-            LoadScenario(loadedScenario);
+            loader.LoadScenario(selectedScenario, 
+                onSuccess: (loadedScenario) => {
+                    LoadScenario(loadedScenario);
+                },
+                onError: (error) => {
+                    Debug.LogError($"Failed to load scenario: {error}");
+                    Debug.LogWarning("Using inspector scenario as fallback");
+                    LoadScenario(currentScenario);
+                }
+            );
         }
         else
         {
