@@ -787,16 +787,3 @@ public class StudentAgent : MonoBehaviour
         }
     }
 }
-
-/// <summary>
-/// Discrete behavioral states for FSM
-/// </summary>
-public enum StudentState
-{
-    Listening,      // Attentive, following lesson
-    Engaged,        // Actively participating
-    Distracted,     // Mind wandering, not focused
-    SideTalk,       // Talking to peers
-    Arguing,        // Confrontational with teacher/peers
-    Withdrawn       // Silent, emotionally shut down
-}

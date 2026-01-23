@@ -73,9 +73,9 @@ public class RegistrationUI : MonoBehaviour
         if (loadingIndicator != null)
             loadingIndicator.SetActive(false);
 
-        // Hide registration panel initially
-        if (registrationPanel != null)
-            registrationPanel.SetActive(false);
+        // Don't force panel state in Start - let it be controlled by the editor initial state
+        // if (registrationPanel != null)
+        //     registrationPanel.SetActive(false);
 
         // Clear message
         ShowMessage("", normalColor);
@@ -325,59 +325,7 @@ public class RegistrationUI : MonoBehaviour
         
         ShowMessage($"✓ החשבון נוצר בהצלחה!\nברוך הבא, {fullNameInput.text}!", successColor);
 
-        // Auto-login after 2 seconds
-        Invoke(nameof(AutoLogin), 2f);
-    }
-
-    /// <summary>
-    /// Automatically login after successful registration
-    /// </summary>
-    void AutoLogin()
-    {
-        StartCoroutine(AutoLoginCoroutine());
-    }
-
-    IEnumerator AutoLoginCoroutine()
-    {
-        string username = usernameInput.text.Trim();
-        string password = passwordInput.text;
-
-        ShowMessage("מתחבר...", normalColor);
-
-        bool loginComplete = false;
-        bool loginSuccess = false;
-
-        yield return authManager.LoginCoroutine(
-            username,
-            password,
-            (response) => {
-                loginComplete = true;
-                loginSuccess = true;
-            },
-            (error) => {
-                loginComplete = true;
-                loginSuccess = false;
-                Debug.LogError($"Auto-login failed: {error}");
-            }
-        );
-
-        yield return new WaitUntil(() => loginComplete);
-
-        if (loginSuccess)
-        {
-            // Hide registration panel
-            if (registrationPanel != null)
-                registrationPanel.SetActive(false);
-
-            // Show scenario selection
-            TransitionToScenarioSelection();
-        }
-        else
-        {
-            // If auto-login fails, just go back to login screen
-            OnBackToLoginClicked();
-            ShowMessage("החשבון נוצר! אנא התחבר.", successColor);
-        }
+        OnBackToLoginClicked();
     }
 
     /// <summary>
