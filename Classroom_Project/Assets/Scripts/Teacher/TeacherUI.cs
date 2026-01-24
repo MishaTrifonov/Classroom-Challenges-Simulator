@@ -188,14 +188,23 @@ public class TeacherUI : MonoBehaviour
             {
                 StudentAgent student = hit.collider.GetComponentInParent<StudentAgent>();
 
-                // In seat switching mode, handle second selection
+                // In seat switching mode, handle selection
                 if (isSeatSwitchingMode)
                 {
                     if (student != null)
                     {
-                        // Student clicked - use as second selection
-                        HandleSeatSwitchingSecondSelection(student, null);
-                        return;
+                        // If no first student selected yet, this becomes the first student
+                        if (firstStudentForSwap == null)
+                        {
+                            EnterSeatSwitchingMode(student);
+                            return;
+                        }
+                        else
+                        {
+                            // Student clicked - use as second selection
+                            HandleSeatSwitchingSecondSelection(student, null);
+                            return;
+                        }
                     }
                     else
                     {
@@ -207,8 +216,12 @@ public class TeacherUI : MonoBehaviour
                             hitTransform.name.Contains("Seat") ||
                             hitTransform.name.Contains("SpawnPoint"))
                         {
-                            HandleSeatSwitchingSecondSelection(null, hitTransform);
-                            return;
+                            // Only allow seat selection if we already have a first student
+                            if (firstStudentForSwap != null)
+                            {
+                                HandleSeatSwitchingSecondSelection(null, hitTransform);
+                                return;
+                            }
                         }
                     }
                 }
@@ -510,11 +523,14 @@ public class TeacherUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Display temporary feedback message
+    /// Display temporary feedback message (Hebrew RTL).
     /// </summary>
     public void ShowFeedback(string message, Color color)
     {
         if (feedbackPanel == null || feedbackText == null) return;
+
+        feedbackText.isRightToLeftText = true;
+        feedbackText.alignment = TMPro.TextAlignmentOptions.Right;
 
         feedbackPanel.SetActive(true);
         feedbackText.text = message;
@@ -536,14 +552,53 @@ public class TeacherUI : MonoBehaviour
     /// </summary>
     void OnSwitchPlacesButtonClicked()
     {
-        if (selectedStudent == null)
+        Debug.Log("[TeacherUI] Switch places button clicked!");
+        
+        // Show the seat swap panel immediately
+        if (seatSwapPanel != null)
         {
-            ShowFeedback("אנא בחר תלמיד תחילה!", Color.yellow);
-            return;
-        }
+            Debug.Log("[TeacherUI] seatSwapPanel is assigned, checking panel reference...");
+            
+            if (seatSwapPanel.panel == null)
+            {
+                Debug.LogError("[TeacherUI] seatSwapPanel.panel is NULL! Please assign the panel GameObject in the Inspector.");
+                ShowFeedback("שגיאה: פאנל החלפת מקומות לא מוגדר", Color.red);
+                return;
+            }
+            
+            if (selectedStudent != null)
+            {
+                // If student is already selected, enter seat switching mode with that student
+                Debug.Log($"[TeacherUI] Student already selected: {selectedStudent.studentName}");
+                EnterSeatSwitchingMode(selectedStudent);
+            }
+            else
+            {
+                // If no student selected, show panel and enter mode to select first student
+                Debug.Log("[TeacherUI] No student selected, showing panel in waiting mode");
+                isSeatSwitchingMode = true;
+                firstStudentForSwap = null;
+                secondStudentForSwap = null;
+                secondSeatForSwap = null;
 
-        // Enter seat switching mode
-        EnterSeatSwitchingMode(selectedStudent);
+                // Show the panel in "waiting for first student" mode
+                seatSwapPanel.ShowPanelWaitingForFirst(OnSeatSwapConfirmed, ExitSeatSwitchingMode);
+                
+                Debug.Log($"[TeacherUI] Panel should now be active: {seatSwapPanel.panel.activeSelf}");
+
+                // Hide action menu during swap mode
+                if (actionMenu != null)
+                    actionMenu.SetActive(false);
+
+                ShowFeedback("בחר תלמיד ראשון להחלפת מקום", Color.cyan);
+                Debug.Log("Entered seat switching mode - waiting for first student selection");
+            }
+        }
+        else
+        {
+            Debug.LogError("[TeacherUI] seatSwapPanel is NULL! Please assign SeatSwapPanelUI component in the Inspector.");
+            ShowFeedback("שגיאה: פאנל החלפת מקומות לא מוגדר", Color.red);
+        }
     }
 
     /// <summary>

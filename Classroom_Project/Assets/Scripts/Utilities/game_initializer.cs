@@ -28,7 +28,8 @@ public class GameInitializer : MonoBehaviour
     public bool requireLogin = true;
     
     [Header("Debug Options")]
-    public bool showDebugInfo = true;
+    [Tooltip("Debug info panel is disabled - not shown")]
+    public bool showDebugInfo = false; // FPS panel disabled - always false
     public KeyCode restartKey = KeyCode.R;
     public KeyCode quitKey = KeyCode.Escape;
 
@@ -36,6 +37,9 @@ public class GameInitializer : MonoBehaviour
 
     void Start()
     {
+        // Force showDebugInfo to false to ensure debug panel is never shown
+        showDebugInfo = false;
+        
         InitializeGame();
     }
 
@@ -256,23 +260,23 @@ public class GameInitializer : MonoBehaviour
 
     /// <summary>
     /// Display debug information on screen
+    /// Debug panel is disabled - this method does nothing
     /// </summary>
     void OnGUI()
     {
-        if (!showDebugInfo) return;
-
-        GUIStyle style = new GUIStyle(GUI.skin.label);
-        style.fontSize = 14;
-        style.normal.textColor = Color.white;
-
-        // Draw black background box
-        GUI.Box(new Rect(10, 10, 300, 120), "");
-
-        // Draw debug info
-        GUI.Label(new Rect(20, 20, 280, 25), $"FPS: {(int)(1f / Time.deltaTime)}", style);
-        GUI.Label(new Rect(20, 45, 280, 25), $"Students: {classroomManager?.activeStudents.Count ?? 0}", style);
-        GUI.Label(new Rect(20, 70, 280, 25), $"Press {restartKey} to restart", style);
-        GUI.Label(new Rect(20, 95, 280, 25), $"Press {quitKey} to quit", style);
+        // Debug info panel disabled - always return without displaying anything
+        return;
+        
+        // Old code (disabled):
+        // if (!showDebugInfo) return;
+        // GUIStyle style = new GUIStyle(GUI.skin.label);
+        // style.fontSize = 14;
+        // style.normal.textColor = Color.white;
+        // GUI.Box(new Rect(10, 10, 300, 120), "");
+        // GUI.Label(new Rect(20, 20, 280, 25), $"FPS: {(int)(1f / Time.deltaTime)}", style);
+        // GUI.Label(new Rect(20, 45, 280, 25), $"Students: {classroomManager?.activeStudents.Count ?? 0}", style);
+        // GUI.Label(new Rect(20, 70, 280, 25), $"Press {restartKey} to restart", style);
+        // GUI.Label(new Rect(20, 95, 280, 25), $"Press {quitKey} to quit", style);
     }
 }
 

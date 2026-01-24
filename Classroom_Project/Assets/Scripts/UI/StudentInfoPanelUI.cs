@@ -32,15 +32,60 @@ public class StudentInfoPanelUI : MonoBehaviour
     private float lastUpdateTime;
 
     private StudentAgent currentStudent;
+    
+    // Track previous emotion values to detect changes
+    private EmotionVector previousEmotions;
 
     void Update()
     {
-        // Update display periodically if we have a current student
-        if (currentStudent != null && Time.time - lastUpdateTime >= updateInterval)
+        if (currentStudent != null)
         {
-            UpdateDisplay();
-            lastUpdateTime = Time.time;
+            // Check if emotions have changed
+            bool emotionsChanged = HasEmotionsChanged();
+            
+            // Update display if emotions changed or if update interval elapsed
+            if (emotionsChanged || Time.time - lastUpdateTime >= updateInterval)
+            {
+                UpdateDisplay();
+                lastUpdateTime = Time.time;
+                
+                // Update previous emotions after refresh
+                if (currentStudent.emotions != null)
+                {
+                    previousEmotions = new EmotionVector
+                    {
+                        Happiness = currentStudent.emotions.Happiness,
+                        Sadness = currentStudent.emotions.Sadness,
+                        Frustration = currentStudent.emotions.Frustration,
+                        Boredom = currentStudent.emotions.Boredom,
+                        Anger = currentStudent.emotions.Anger
+                    };
+                }
+            }
         }
+    }
+    
+    /// <summary>
+    /// Check if the current student's emotions have changed since last update
+    /// </summary>
+    private bool HasEmotionsChanged()
+    {
+        if (currentStudent == null || currentStudent.emotions == null)
+            return false;
+            
+        // If we don't have previous emotions, consider it changed (first time)
+        if (previousEmotions == null)
+            return true;
+            
+        EmotionVector current = currentStudent.emotions;
+        
+        // Check if any emotion value has changed significantly (more than 0.01 to avoid floating point noise)
+        float threshold = 0.01f;
+        return Mathf.Abs(current.Happiness - previousEmotions.Happiness) > threshold ||
+               Mathf.Abs(current.Sadness - previousEmotions.Sadness) > threshold ||
+               Mathf.Abs(current.Frustration - previousEmotions.Frustration) > threshold ||
+               Mathf.Abs(current.Boredom - previousEmotions.Boredom) > threshold ||
+               Mathf.Abs(current.Anger - previousEmotions.Anger) > threshold;
     }
 
     /// <summary>
@@ -55,6 +100,20 @@ public class StudentInfoPanelUI : MonoBehaviour
         }
 
         currentStudent = student;
+        
+        // Initialize previous emotions to current emotions
+        if (student.emotions != null)
+        {
+            previousEmotions = new EmotionVector
+            {
+                Happiness = student.emotions.Happiness,
+                Sadness = student.emotions.Sadness,
+                Frustration = student.emotions.Frustration,
+                Boredom = student.emotions.Boredom,
+                Anger = student.emotions.Anger
+            };
+        }
+        
         UpdateDisplay();
     }
 
@@ -114,6 +173,7 @@ public class StudentInfoPanelUI : MonoBehaviour
     public void ClosePanel()
     {
         currentStudent = null;
+        previousEmotions = null;
 
         if (emotionDetailsText != null)
             emotionDetailsText.text = "";

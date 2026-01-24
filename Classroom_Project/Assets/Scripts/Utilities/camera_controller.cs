@@ -40,7 +40,7 @@ public class CameraController : MonoBehaviour
     
     [Header("Auto Focus Settings")]
     [Tooltip("Enable automatic camera focus on students who want to answer")]
-    public bool autoFocusOnEagerStudents = true;
+    public bool autoFocusOnEagerStudents = false;
     
     [Tooltip("How fast the camera moves when focusing on a student")]
     public float focusSpeed = 5f;

@@ -38,6 +38,7 @@ public class StudentReactionAnimator : MonoBehaviour
 
     // Reaction Parameters
     private static readonly string PARAM_IS_CRYING = "IsCrying";
+    /// <summary>Trigger parameter for hand-raise. In Unity: Animator Controller must have a Trigger named exactly "RaiseHand".</summary>
     private static readonly string PARAM_RAISE_HAND = "RaiseHand";
 
     // Movement Parameters

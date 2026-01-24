@@ -1,12 +1,13 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections;
 
 /// <summary>
 /// Simple UI bubble that displays text above a model.
-/// Attach this to a student model - it will automatically create a world-space canvas
-/// and position itself above the model's head.
-/// FIXED: Canvas and UI elements are now on UI layer and won't interfere with physics
+/// Attach this to a student model with an existing Canvas child (e.g., "studentbubbleCanvas").
+/// The script will find and use the existing canvas and UI elements.
+/// Bubble position and size are in world space and not affected by student's scale.
 /// </summary>
 public class StudentResponseBubble : MonoBehaviour
 {
@@ -21,7 +22,7 @@ public class StudentResponseBubble : MonoBehaviour
     public Image bubbleBackground;
 
     [Header("Positioning")]
-    [Tooltip("Offset above the model (relative to this transform)")]
+    [Tooltip("Offset above the model in world space. Not affected by student scale.")]
     public Vector3 headOffset = new Vector3(0, 2.0f, 0);
 
     [Tooltip("Camera to use for world-to-screen conversion (auto-finds Main Camera if not set)")]
@@ -29,19 +30,19 @@ public class StudentResponseBubble : MonoBehaviour
 
     [Header("Sizing")]
     [Tooltip("Minimum width of the bubble")]
-    public float minWidth = 100f;
+    public float minWidth = 12f;
 
     [Tooltip("Maximum width of the bubble")]
-    public float maxWidth = 250f;
+    public float maxWidth = 24f;
 
     [Tooltip("Padding around text")]
-    public Vector2 textPadding = new Vector2(10f, 8f);
+    public Vector2 textPadding = new Vector2(4f, 3f);
 
     [Tooltip("Width for eager/preview bubbles")]
-    public float eagerBubbleWidth = 80f;
+    public float eagerBubbleWidth = 18f;
 
     [Tooltip("Max width for full answer bubbles")]
-    public float answerBubbleMaxWidth = 300f;
+    public float answerBubbleMaxWidth = 16f;
 
     [Header("Styling")]
     [Tooltip("Background color of the bubble")]
@@ -51,14 +52,24 @@ public class StudentResponseBubble : MonoBehaviour
     public Color textColor = new Color(0.2f, 0.2f, 0.2f, 1f);
 
     [Tooltip("Font size")]
-    public int fontSize = 14;
+    public int fontSize = 12;
 
     [Tooltip("Font size for eager/preview text")]
-    public int eagerFontSize = 16;
+    public int eagerFontSize = 14;
+
+    [Header("Auto-hide")]
+    [Tooltip("Seconds after which the full response bubble is hidden")]
+    public float responseHideDelay = 15f;
+
+    [Header("Scale")]
+    [Tooltip("Scale of the bubble in world space (0.2–0.5 = smaller, 1 = same as layout). Tune this to match your student size.")]
+    [Range(0.1f, 2f)]
+    public float bubbleScaleMultiplier = 0.35f;
 
     private string currentResponse = "";
     private RectTransform bubbleRect;
     private bool isAnswerMode = false; // Track if showing full answer or eager preview
+    private Coroutine hideAfterDelayCoroutine;
 
     void Start()
     {
@@ -82,137 +93,99 @@ public class StudentResponseBubble : MonoBehaviour
         UpdatePosition();
     }
 
-    /// <summary>
-    /// Create the response canvas if it doesn't exist
-    /// </summary>
-    void CreateResponseCanvas()
+    void LateUpdate()
     {
-        GameObject canvasObj = new GameObject("ResponseCanvas");
-        canvasObj.transform.SetParent(transform);
-        canvasObj.transform.localPosition = Vector3.zero;
-        canvasObj.transform.localRotation = Quaternion.identity;
-        canvasObj.transform.localScale = Vector3.one;
+        if (responseCanvas == null || !responseCanvas.gameObject.activeSelf)
+            return;
 
-        // CRITICAL FIX: Set canvas to UI layer to prevent physics interference
-        canvasObj.layer = LayerMask.NameToLayer("UI");
-        if (canvasObj.layer == -1)
-        {
-            // If UI layer doesn't exist, create it on layer 5 (standard Unity UI layer)
-            canvasObj.layer = 5;
-        }
-
-        responseCanvas = canvasObj.AddComponent<Canvas>();
-        responseCanvas.renderMode = RenderMode.WorldSpace;
-        responseCanvas.worldCamera = mainCamera;
-        
-        // Disable GraphicRaycaster to prevent UI from blocking clicks
-        GraphicRaycaster raycaster = canvasObj.GetComponent<GraphicRaycaster>();
-        if (raycaster != null)
-        {
-            raycaster.enabled = false;
-        }
-
-        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-        scaler.dynamicPixelsPerUnit = 10f;
-
-        RectTransform canvasRect = canvasObj.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(300, 150);
-        
-        // Set sorting order high so it renders above everything
-        responseCanvas.sortingOrder = 1000;
+        UpdatePosition();
     }
 
     /// <summary>
-    /// Setup the bubble UI elements
+    /// Setup the bubble UI elements - finds existing canvas and UI elements (no auto-creation)
     /// </summary>
     void SetupBubbleUI()
     {
-        // Create canvas if needed
+        // Find existing canvas (no auto-creation)
         if (responseCanvas == null)
         {
             responseCanvas = GetComponentInChildren<Canvas>();
-            if (responseCanvas == null)
+        }
+
+        if (responseCanvas == null)
+        {
+            Debug.LogWarning("StudentResponseBubble: No Canvas found in children. Please assign responseCanvas manually or add a Canvas as a child.");
+            return;
+        }
+
+        // Ensure canvas is set to World Space rendering mode
+        if (responseCanvas.renderMode != RenderMode.WorldSpace)
+        {
+            responseCanvas.renderMode = RenderMode.WorldSpace;
+            Debug.Log($"[StudentResponseBubble] Changed canvas render mode to WorldSpace for {gameObject.name}");
+        }
+
+        // Keep canvas unparented or parented to a non-scaled parent to avoid world scale effects
+        // Canvas should not be parented to the student to avoid scale inheritance
+        if (responseCanvas.transform.parent == transform)
+        {
+            responseCanvas.transform.SetParent(null, true); // Unparent but keep world position
+            Debug.Log($"[StudentResponseBubble] Unparented canvas from student transform for {gameObject.name} to avoid scale inheritance");
+        }
+
+        // Find existing background
+        if (bubbleBackground == null)
+        {
+            bubbleBackground = responseCanvas.GetComponentInChildren<Image>();
+        }
+
+        // Find existing text component
+        if (responseText == null)
+        {
+            responseText = responseCanvas.GetComponentInChildren<TextMeshProUGUI>();
+        }
+
+        // Find existing RectTransform (could be on background or a panel)
+        if (bubbleRect == null && bubbleBackground != null)
+        {
+            bubbleRect = bubbleBackground.GetComponent<RectTransform>();
+        }
+        else if (bubbleRect == null && responseText != null)
+        {
+            bubbleRect = responseText.GetComponent<RectTransform>();
+        }
+        else if (bubbleRect == null)
+        {
+            // Try to find any RectTransform in the canvas
+            RectTransform[] rects = responseCanvas.GetComponentsInChildren<RectTransform>();
+            if (rects.Length > 1) // More than just the canvas itself
             {
-                CreateResponseCanvas();
+                bubbleRect = rects[1]; // Use first child RectTransform
             }
         }
 
-        if (responseCanvas == null) return;
-
-        // Ensure canvas is on UI layer
-        if (responseCanvas.gameObject.layer != 5 && responseCanvas.gameObject.layer != LayerMask.NameToLayer("UI"))
-        {
-            int uiLayer = LayerMask.NameToLayer("UI");
-            responseCanvas.gameObject.layer = (uiLayer != -1) ? uiLayer : 5;
-        }
-
-        // Create bubble panel (RectTransform)
         if (bubbleRect == null)
         {
-            GameObject panelObj = new GameObject("BubblePanel");
-            panelObj.layer = responseCanvas.gameObject.layer; // Same layer as canvas
-            panelObj.transform.SetParent(responseCanvas.transform, false);
-            bubbleRect = panelObj.AddComponent<RectTransform>();
-            bubbleRect.anchorMin = new Vector2(0.5f, 0.5f);
-            bubbleRect.anchorMax = new Vector2(0.5f, 0.5f);
-            bubbleRect.pivot = new Vector2(0.5f, 0.5f);
-            bubbleRect.sizeDelta = new Vector2(minWidth, 40f);
-        }
-
-        // Create or find background
-        if (bubbleBackground == null)
-        {
-            GameObject bgObj = new GameObject("Background");
-            bgObj.layer = responseCanvas.gameObject.layer; // Same layer as canvas
-            bgObj.transform.SetParent(bubbleRect, false);
-            bubbleBackground = bgObj.AddComponent<Image>();
-            bubbleBackground.color = backgroundColor;
-            
-            // Disable raycast target to prevent blocking clicks
-            bubbleBackground.raycastTarget = false;
-            
-            RectTransform bgRect = bgObj.GetComponent<RectTransform>();
-            bgRect.anchorMin = Vector2.zero;
-            bgRect.anchorMax = Vector2.one;
-            bgRect.sizeDelta = Vector2.zero;
-            bgRect.anchoredPosition = Vector2.zero;
-        }
-
-        // Create or find text
-        if (responseText == null)
-        {
-            GameObject textObj = new GameObject("ResponseText");
-            textObj.layer = responseCanvas.gameObject.layer; // Same layer as canvas
-            textObj.transform.SetParent(bubbleRect, false);
-            responseText = textObj.AddComponent<TextMeshProUGUI>();
-            responseText.color = textColor;
-            responseText.fontSize = fontSize;
-            responseText.alignment = TextAlignmentOptions.Center;
-            responseText.enableWordWrapping = true;
-            responseText.overflowMode = TextOverflowModes.Ellipsis;
-            // Enable RTL support for Hebrew text
-            responseText.isRightToLeftText = true;
-            
-            // Disable raycast target to prevent blocking clicks
-            responseText.raycastTarget = false;
-
-            RectTransform textRect = textObj.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = new Vector2(-textPadding.x * 2, -textPadding.y * 2);
-            textRect.anchoredPosition = Vector2.zero;
+            Debug.LogWarning("StudentResponseBubble: No RectTransform found for bubble. Please ensure the canvas has UI elements.");
         }
     }
 
     /// <summary>
-    /// Update bubble position to follow model's head
+    /// Update bubble position to follow model's head.
+    /// Uses world space positioning and scale, not affected by student's scale.
     /// </summary>
     void UpdatePosition()
     {
         if (mainCamera == null || responseCanvas == null)
             return;
 
-        // Calculate world position above the model (this transform + offset)
+        // Ensure canvas is NOT parented to the student to avoid scale inheritance
+        if (responseCanvas.transform.parent == transform)
+        {
+            responseCanvas.transform.SetParent(null, true); // Unparent but keep world position
+        }
+
+        // Calculate world position: use world space offset (not affected by student scale)
         Vector3 worldPosition = transform.position + headOffset;
 
         // Convert to screen space to check visibility
@@ -225,15 +198,30 @@ public class StudentResponseBubble : MonoBehaviour
             return;
         }
 
-        // Position canvas above model and make it face the camera
+        // Apply scale multiplier in world space (not affected by parent scale)
+        float s = Mathf.Clamp(bubbleScaleMultiplier, 0.1f, 2f);
+        responseCanvas.transform.localScale = new Vector3(s, s, s);
+
+        // Position canvas above model using world position (not affected by student scale)
         responseCanvas.transform.position = worldPosition;
-        responseCanvas.transform.LookAt(mainCamera.transform);
-        responseCanvas.transform.Rotate(0, 180, 0); // Flip to face camera
+        
+        // Make bubble face the camera
+        if (mainCamera != null)
+        {
+            Vector3 bubbleWorldPos = responseCanvas.transform.position;
+            Vector3 directionToCamera = mainCamera.transform.position - bubbleWorldPos;
+            directionToCamera.y = 0; // Keep bubble upright, only rotate on Y axis
+            if (directionToCamera != Vector3.zero)
+            {
+                responseCanvas.transform.rotation = Quaternion.LookRotation(-directionToCamera);
+            }
+        }
     }
 
 
     /// <summary>
     /// Show response text in the bubble (full answer mode).
+    /// Auto-hides after responseHideDelay seconds.
     /// </summary>
     public void ShowResponse(string response)
     {
@@ -241,6 +229,12 @@ public class StudentResponseBubble : MonoBehaviour
         {
             HideBubble();
             return;
+        }
+
+        if (hideAfterDelayCoroutine != null)
+        {
+            StopCoroutine(hideAfterDelayCoroutine);
+            hideAfterDelayCoroutine = null;
         }
 
         currentResponse = response;
@@ -276,7 +270,7 @@ public class StudentResponseBubble : MonoBehaviour
 
             // Set width (clamped to min/max for full answers)
             float width = Mathf.Clamp(textWidth + textPadding.x * 2, minWidth, answerBubbleMaxWidth);
-            float height = Mathf.Max(35f, textHeight + textPadding.y * 2);
+            float height = Mathf.Max(16f, textHeight + textPadding.y * 2);
 
             bubbleRect.sizeDelta = new Vector2(width, height);
         }
@@ -286,6 +280,15 @@ public class StudentResponseBubble : MonoBehaviour
         {
             responseCanvas.gameObject.SetActive(true);
         }
+
+        hideAfterDelayCoroutine = StartCoroutine(HideAfterDelayCoroutine());
+    }
+
+    private IEnumerator HideAfterDelayCoroutine()
+    {
+        yield return new WaitForSeconds(responseHideDelay);
+        hideAfterDelayCoroutine = null;
+        HideBubble();
     }
 
     /// <summary>
@@ -332,7 +335,7 @@ public class StudentResponseBubble : MonoBehaviour
 
             // Smaller, more compact bubble for eager text
             float width = Mathf.Max(eagerBubbleWidth, textWidth + textPadding.x * 2);
-            float height = Mathf.Max(30f, textHeight + textPadding.y);
+            float height = Mathf.Max(12f, textHeight + textPadding.y);
 
             bubbleRect.sizeDelta = new Vector2(width, height);
         }
@@ -349,6 +352,12 @@ public class StudentResponseBubble : MonoBehaviour
     /// </summary>
     public void HideBubble()
     {
+        if (hideAfterDelayCoroutine != null)
+        {
+            StopCoroutine(hideAfterDelayCoroutine);
+            hideAfterDelayCoroutine = null;
+        }
+
         if (responseCanvas != null)
         {
             responseCanvas.gameObject.SetActive(false);

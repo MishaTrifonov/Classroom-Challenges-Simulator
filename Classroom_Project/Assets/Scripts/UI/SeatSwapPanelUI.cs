@@ -87,6 +87,32 @@ public class SeatSwapPanelUI : MonoBehaviour
     }
 
     /// <summary>
+    /// Show the panel without a first student (waiting for first selection)
+    /// </summary>
+    public void ShowPanelWaitingForFirst(System.Action<StudentAgent, StudentAgent, Transform> swapCallback, System.Action cancelCallback = null)
+    {
+        Debug.Log($"[SeatSwapPanelUI] ShowPanelWaitingForFirst called. Panel reference: {(panel != null ? "assigned" : "NULL")}");
+        
+        if (panel != null)
+        {
+            panel.SetActive(true);
+            Debug.Log($"[SeatSwapPanelUI] Panel activated. Active state: {panel.activeSelf}");
+        }
+        else
+        {
+            Debug.LogError("[SeatSwapPanelUI] Panel GameObject is NULL! Please assign the panel GameObject in the Inspector.");
+        }
+
+        firstStudent = null;
+        secondStudent = null;
+        secondSeat = null;
+        onSwapConfirmed = swapCallback;
+        onSwapCancelled = cancelCallback;
+
+        UpdateDisplay();
+    }
+
+    /// <summary>
     /// Update the second selection (student or seat)
     /// </summary>
     public void SetSecondSelection(StudentAgent student, Transform seat)
@@ -111,15 +137,28 @@ public class SeatSwapPanelUI : MonoBehaviour
     void UpdateDisplay()
     {
         // Update first student text
-        if (firstStudentText != null && firstStudent != null)
+        if (firstStudentText != null)
         {
-            firstStudentText.text = firstStudentPrefix + firstStudent.studentName;
+            if (firstStudent != null)
+            {
+                firstStudentText.text = firstStudentPrefix + firstStudent.studentName;
+            }
+            else
+            {
+                // No first student selected yet
+                firstStudentText.text = "בחר תלמיד ראשון להחלפה";
+            }
         }
 
         // Update second student/seat text
         if (secondStudentText != null)
         {
-            if (secondStudent != null)
+            if (firstStudent == null)
+            {
+                // Waiting for first student
+                secondStudentText.text = "";
+            }
+            else if (secondStudent != null)
             {
                 // Second student selected
                 secondStudentText.text = separator + secondStudent.studentName;
@@ -139,7 +178,7 @@ public class SeatSwapPanelUI : MonoBehaviour
         // Show/hide switch button based on whether we have both selections
         if (switchButton != null)
         {
-            switchButton.gameObject.SetActive(HasValidSecondSelection());
+            switchButton.gameObject.SetActive(firstStudent != null && HasValidSecondSelection());
         }
     }
 

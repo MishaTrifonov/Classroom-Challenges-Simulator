@@ -6,6 +6,7 @@ using System.Collections.Generic;
 /// <summary>
 /// Core student behavior agent using Finite State Machine.
 /// Manages behavioral states and transitions based on emotional vectors.
+/// Supports ML-Agent driven state transitions for enhanced realism.
 /// </summary>
 public class StudentAgent : MonoBehaviour
 {
@@ -25,6 +26,21 @@ public class StudentAgent : MonoBehaviour
     [Header("Current State")]
     public StudentState currentState = StudentState.Listening;
     private StudentState previousState;
+
+    [Header("ML-Agent Integration")]
+    [Tooltip("Reference to ML-Agent coordinator (auto-found if null)")]
+    public MLAgentClassroomCoordinator mlAgentCoordinator;
+
+    [Tooltip("Use ML-Agent for state transitions instead of rule-based")]
+    public bool useMLAgentTransitions = true;
+
+    [Tooltip("Minimum confidence threshold to accept ML-Agent decisions")]
+    [Range(0f, 1f)] public float mlAgentConfidenceThreshold = 0.3f;
+
+    // ML-Agent state tracking
+    private bool isRequestingMLAgentDecision = false;
+    private float lastMLAgentRequestTime = 0f;
+    private const float ML_AGENT_REQUEST_COOLDOWN = 1f;
 
     [Header("Proximity Settings")]
     public float influenceRadius = 3f;
@@ -69,7 +85,7 @@ public class StudentAgent : MonoBehaviour
                 studentRenderer = GetComponentInChildren<Renderer>();
             }
         }
-        
+
         if (studentRenderer != null)
         {
             originalColor = studentRenderer.material.color;
@@ -95,23 +111,23 @@ public class StudentAgent : MonoBehaviour
         // Initialize NavMeshAgent if not assigned
         if (navAgent == null)
             navAgent = GetComponent<NavMeshAgent>();
-        
+
         if (navAgent != null)
         {
             navAgent.speed = walkSpeed;
             navAgent.enabled = true;
-            
+
             // Ensure collider is enabled for click detection (NavMeshAgent doesn't disable it, but we verify)
             Collider col = GetComponent<Collider>();
             if (col != null)
                 col.enabled = true;
         }
-        
+
 
         // Store original position (seat position)
         originalPosition = transform.position;
         originalRotation = transform.rotation;
-        
+
         if (seatPosition == null)
         {
             // Create a reference point at current position
@@ -124,9 +140,44 @@ public class StudentAgent : MonoBehaviour
         UpdateNearbyStudents();
         InvokeRepeating(nameof(UpdateNearbyStudents), 0f, 5f);
 
+        // Initialize ML-Agent integration
+        InitializeMLAgentIntegration();
+
         // Test response bubble
         GetComponent<StudentResponseBubble>()
             ?.ShowEagerBubble("בדיקה");
+    }
+
+    /// <summary>
+    /// Initialize ML-Agent integration by finding coordinator and registering
+    /// </summary>
+    private void InitializeMLAgentIntegration()
+    {
+        // Find ML-Agent coordinator if not assigned
+        if (mlAgentCoordinator == null)
+        {
+            mlAgentCoordinator = FindObjectOfType<MLAgentClassroomCoordinator>();
+        }
+
+        // Register with coordinator
+        if (mlAgentCoordinator != null)
+        {
+            mlAgentCoordinator.RegisterStudent(this);
+            Debug.Log($"[StudentAgent] {studentName}: Registered with ML-Agent coordinator");
+        }
+        else if (useMLAgentTransitions)
+        {
+            Debug.LogWarning($"[StudentAgent] {studentName}: ML-Agent transitions enabled but no coordinator found. Using rule-based fallback.");
+        }
+    }
+
+    private void OnDestroy()
+    {
+        // Unregister from ML-Agent coordinator
+        if (mlAgentCoordinator != null)
+        {
+            mlAgentCoordinator.UnregisterStudent(this);
+        }
     }
 
     void Update()
@@ -169,9 +220,72 @@ public class StudentAgent : MonoBehaviour
 
     /// <summary>
     /// Evaluate whether to transition to a new behavioral state
-    /// based on current emotions and context
+    /// based on current emotions, context, and ML-Agent decisions
     /// </summary>
     void EvaluateStateTransition()
+    {
+        // Check if ML-Agent integration is available and enabled
+        if (useMLAgentTransitions && mlAgentCoordinator != null && !isRequestingMLAgentDecision)
+        {
+            // Check cooldown to avoid overwhelming the ML-Agent
+            if (Time.time - lastMLAgentRequestTime >= ML_AGENT_REQUEST_COOLDOWN)
+            {
+                StartCoroutine(EvaluateStateTransitionWithMLAgent());
+                return;
+            }
+        }
+
+        // Fall back to rule-based state transition
+        EvaluateStateTransitionRuleBased();
+    }
+
+    /// <summary>
+    /// Evaluate state transition using ML-Agent model
+    /// </summary>
+    private IEnumerator EvaluateStateTransitionWithMLAgent()
+    {
+        isRequestingMLAgentDecision = true;
+        lastMLAgentRequestTime = Time.time;
+
+        StateDecisionResult result = null;
+
+        yield return StartCoroutine(mlAgentCoordinator.RequestStateTransition(this, (r) =>
+        {
+            result = r;
+        }));
+
+        isRequestingMLAgentDecision = false;
+
+        if (result != null && result.success && result.shouldTransition)
+        {
+            // Check confidence threshold
+            if (result.confidence >= mlAgentConfidenceThreshold)
+            {
+                if (result.recommendedState != currentState)
+                {
+                    Debug.Log($"[StudentAgent] {studentName}: ML-Agent transition " +
+                              $"{currentState} -> {result.recommendedState} (conf: {result.confidence:F2})");
+                    TransitionToState(result.recommendedState);
+                }
+            }
+            else
+            {
+                // Low confidence - fall back to rule-based
+                EvaluateStateTransitionRuleBased();
+            }
+        }
+        else if (result == null || !result.success)
+        {
+            // ML-Agent failed - fall back to rule-based
+            EvaluateStateTransitionRuleBased();
+        }
+    }
+
+    /// <summary>
+    /// Rule-based state transition evaluation (original logic)
+    /// Used as fallback when ML-Agent is unavailable or returns low confidence
+    /// </summary>
+    void EvaluateStateTransitionRuleBased()
     {
         StudentState newState = currentState;
         float transitionProbability = 0f;
@@ -231,6 +345,25 @@ public class StudentAgent : MonoBehaviour
         if (newState != currentState)
         {
             TransitionToState(newState);
+        }
+    }
+
+    /// <summary>
+    /// Enable or disable ML-Agent driven state transitions
+    /// </summary>
+    public void SetMLAgentTransitionsEnabled(bool enabled)
+    {
+        useMLAgentTransitions = enabled;
+    }
+
+    /// <summary>
+    /// Trigger a spontaneous interaction via ML-Agent (if available)
+    /// </summary>
+    public void TriggerSpontaneousInteraction(InteractionType type)
+    {
+        if (mlAgentCoordinator != null)
+        {
+            mlAgentCoordinator.TriggerInteraction(this, type);
         }
     }
 
@@ -808,4 +941,17 @@ public class StudentAgent : MonoBehaviour
             ReturnFromBreak();
         }
     }
+}
+
+/// <summary>
+/// Discrete behavioral states for FSM
+/// </summary>
+public enum StudentState
+{
+    Listening,      // Attentive, following lesson
+    Engaged,        // Actively participating
+    Distracted,     // Mind wandering, not focused
+    SideTalk,       // Talking to peers
+    Arguing,        // Confrontational with teacher/peers
+    Withdrawn       // Silent, emotionally shut down
 }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
@@ -18,6 +19,12 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
     public bool enableQuestionDetection = true; // Enable students to respond to questions
     [Tooltip("Auto-start voice recognition when scene loads (requires user permission)")]
     public bool autoStartVoiceRecognition = false;
+
+    [Header("Multiple Student Responses")]
+    [Tooltip("Max number of students to give full AI response on class-wide questions (0 = only eagerness, no auto full answers)")]
+    public int maxStudentsToRespond = 3;
+    [Tooltip("Seconds between each student's response when multiple respond")]
+    public float delayBetweenMultiResponses = 1.5f;
 
     [Header("Debug")]
     [Tooltip("Press this key to trigger a test question (for debugging bubbles without voice)")]
@@ -169,14 +176,26 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
             return;
 
         string lower = transcript.ToLower().Trim();
-        
+
         if (logCommands)
             Debug.Log($"[VoiceCommand] Processing: '{transcript}'");
 
-        // Check for student name mentions
+        // Check for student name mentions FIRST
         StudentAgent targetStudent = DetectStudentMention(lower);
 
-        // Try to match command
+        // Check for student-specific commands (name + action)
+        if (targetStudent != null)
+        {
+            bool handledSpecificCommand = ProcessStudentSpecificCommand(lower, transcript, targetStudent);
+            if (handledSpecificCommand)
+            {
+                if (teacherUI != null)
+                    teacherUI.ShowFeedback($"Voice: {transcript}", Color.cyan);
+                return;
+            }
+        }
+
+        // Try to match general command
         bool commandFound = false;
         foreach (var kvp in commandActions)
         {
@@ -186,7 +205,6 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
                 {
                     if (logCommands)
                         Debug.Log($"[VoiceCommand] Matched keyword: '{keyword}'");
-                    
                     kvp.Value?.Invoke();
                     commandFound = true;
                     break;
@@ -197,21 +215,130 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
 
         // Check for complex commands
         if (!commandFound)
-        {
             ProcessComplexCommand(lower, targetStudent);
-        }
 
         // Check if teacher asked a question - make students respond
         if (enableQuestionDetection && IsQuestion(transcript))
-        {
             ProcessTeacherQuestion(transcript, targetStudent);
-        }
 
         // Show feedback
         if (teacherUI != null)
-        {
             teacherUI.ShowFeedback($"Voice: {transcript}", Color.cyan);
+    }
+
+    /// <summary>
+    /// Process commands directed at a specific student by name.
+    /// Returns true if a command was handled.
+    /// </summary>
+    private bool ProcessStudentSpecificCommand(string lowerText, string originalText, StudentAgent student)
+    {
+        string[] disciplineKeywords = {
+            "די", "תפסיק", "תשתוק", "שקט", "מספיק", "תירגע", "הפסק", "אל",
+            "stop", "quiet", "enough", "be quiet", "stop talking", "settle down"
+        };
+
+        string[] praiseKeywords = {
+            "כל הכבוד", "יפה מאוד", "מצוין", "נהדר", "מעולה", "יופי", "טוב מאוד", "בראבו",
+            "good job", "well done", "excellent", "great", "amazing", "perfect", "bravo"
+        };
+
+        foreach (string keyword in disciplineKeywords)
+        {
+            if (lowerText.Contains(keyword))
+            {
+                ExecuteActionOnStudent(ActionType.Yell, student);
+                ShowStudentEmotionalReaction(student, "discipline");
+                if (logCommands)
+                    Debug.Log($"[VoiceCommand] Disciplined {student.studentName} - student feels hurt");
+                return true;
+            }
         }
+
+        foreach (string keyword in praiseKeywords)
+        {
+            if (lowerText.Contains(keyword))
+            {
+                ExecuteActionOnStudent(ActionType.Praise, student);
+                ShowStudentEmotionalReaction(student, "praise");
+                if (logCommands)
+                    Debug.Log($"[VoiceCommand] Praised {student.studentName} - student feels happy");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Execute an action on a specific student.
+    /// </summary>
+    private void ExecuteActionOnStudent(ActionType actionType, StudentAgent student)
+    {
+        if (classroomManager == null || student == null)
+            return;
+
+        TeacherAction action = new TeacherAction
+        {
+            Type = actionType,
+            TargetStudentId = student.studentId,
+            Context = $"Voice: {actionType} on {student.studentName}"
+        };
+
+        classroomManager.ExecuteTeacherAction(action);
+
+        float intensity = 1.5f;
+        student.emotions.ApplyTeacherAction(action, intensity);
+    }
+
+    /// <summary>
+    /// Show student's emotional reaction in their speech bubble.
+    /// </summary>
+    private void ShowStudentEmotionalReaction(StudentAgent student, string reactionType)
+    {
+        var bubble = student.GetComponentInChildren<StudentResponseBubble>();
+        if (bubble == null) return;
+
+        string reaction = "";
+
+        if (reactionType == "discipline")
+        {
+            if (student.sensitivity > 0.7f)
+            {
+                string[] sensitiveReactions = { "...", "למה אני?", "אני לא עשיתי כלום", "זה לא הוגן" };
+                reaction = sensitiveReactions[Random.Range(0, sensitiveReactions.Length)];
+            }
+            else if (student.rebelliousness > 0.7f)
+            {
+                string[] rebelliousReactions = { "מה?!", "אני לא עשיתי כלום!", "למה רק אני?!", "לא הוגן!" };
+                reaction = rebelliousReactions[Random.Range(0, rebelliousReactions.Length)];
+            }
+            else
+            {
+                string[] normalReactions = { "סליחה...", "בסדר...", "...", "טוב טוב" };
+                reaction = normalReactions[Random.Range(0, normalReactions.Length)];
+            }
+        }
+        else if (reactionType == "praise")
+        {
+            if (student.extroversion > 0.7f)
+            {
+                string[] extrovertReactions = { "תודה!", "יש!", "מעולה!", "אני הכי!", "יאללה!" };
+                reaction = extrovertReactions[Random.Range(0, extrovertReactions.Length)];
+            }
+            else if (student.extroversion < 0.3f)
+            {
+                string[] introvertReactions = { "תודה...", "...", "אה... תודה", "☺" };
+                reaction = introvertReactions[Random.Range(0, introvertReactions.Length)];
+            }
+            else
+            {
+                string[] normalReactions = { "תודה!", "יופי!", "כיף!", "תודה המורה" };
+                reaction = normalReactions[Random.Range(0, normalReactions.Length)];
+            }
+        }
+
+        if (!string.IsNullOrEmpty(reaction))
+            bubble.ShowResponse(reaction);
     }
 
     /// <summary>
@@ -299,40 +426,64 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
         }
         else
         {
-            // Classwide question - trigger all students' question responders
-            // Each student will independently decide whether to show eagerness
-            int eagerStudentCount = 0;
-
+            // Classwide question - trigger all students' question responders (eagerness)
             foreach (var student in classroomManager.activeStudents)
             {
                 if (student == null)
                     continue;
 
-                // Get or add StudentQuestionResponder component
                 StudentQuestionResponder responder = student.GetComponent<StudentQuestionResponder>();
                 if (responder == null)
                 {
                     responder = student.gameObject.AddComponent<StudentQuestionResponder>();
-
-                    // CRITICAL: Immediately initialize references since Start() won't be called until next frame
-                    // This ensures responseBubble and other references are set before OnQuestionAsked is called
                     if (logCommands)
                         Debug.Log($"[VoiceCommand] Added StudentQuestionResponder to {student.studentName}");
                 }
 
-                // Trigger the question for this student
-                // The responder will decide if and how to show eagerness
-                // Note: InitializeReferences() is now called in OnQuestionAsked() to handle dynamic component addition
                 responder.OnQuestionAsked(question);
-
-                // Count how many students are showing eagerness
-                if (responder.HasAnswerReady())
-                    eagerStudentCount++;
             }
 
-            if (logCommands)
-                Debug.Log($"[VoiceCommand] {eagerStudentCount} student(s) are eager to answer");
+            // Trigger full AI response from multiple students (staggered)
+            if (maxStudentsToRespond > 0)
+                StartCoroutine(TriggerMultipleStudentResponses(question));
         }
+    }
+
+    private IEnumerator TriggerMultipleStudentResponses(string question)
+    {
+        if (classroomManager == null || classroomManager.activeStudents == null || classroomManager.activeStudents.Count == 0)
+            yield break;
+
+        var pool = new List<StudentAgent>();
+        foreach (var s in classroomManager.activeStudents)
+        {
+            if (s != null)
+                pool.Add(s);
+        }
+
+        // Shuffle to pick random students
+        for (int i = pool.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            var tmp = pool[i];
+            pool[i] = pool[j];
+            pool[j] = tmp;
+        }
+
+        int n = Mathf.Min(maxStudentsToRespond, pool.Count);
+        for (int i = 0; i < n; i++)
+        {
+            if (i > 0 && delayBetweenMultiResponses > 0f)
+                yield return new WaitForSeconds(delayBetweenMultiResponses);
+
+            TriggerStudentResponse(pool[i], question);
+
+            // Wait for AI generation (generator runs async); brief overlap is ok, responses show for 15s
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        if (logCommands && n > 0)
+            Debug.Log($"[VoiceCommand] {n} student(s) giving full response to class-wide question");
     }
 
     private System.Collections.IEnumerator DelayedStudentResponse(StudentAgent student, string question, float delay)

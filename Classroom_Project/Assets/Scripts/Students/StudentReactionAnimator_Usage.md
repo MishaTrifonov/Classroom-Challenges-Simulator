@@ -60,7 +60,7 @@ The animator expects these parameters:
 - `IsWalking`
 
 #### Trigger Parameters:
-- `RaiseHand`
+- **`RaiseHand`** — Name must be exactly `RaiseHand` (case-sensitive). Hand rise runs without camera shift when `CameraController.autoFocusOnEagerStudents` is disabled.
 - `TriggerHappy` (optional)
 - `TriggerSad` (optional)
 - `TriggerAngry` (optional)
