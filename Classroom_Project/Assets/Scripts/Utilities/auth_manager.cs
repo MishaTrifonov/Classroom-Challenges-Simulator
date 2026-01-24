@@ -159,6 +159,71 @@ public class AuthenticationManager : MonoBehaviour
         }
     }
 
+    public IEnumerator SaveScenarioCoroutine(
+        string fileName,
+        ScenarioConfig scenario,
+        Action<SaveScenarioResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (string.IsNullOrEmpty(fileName) || scenario == null)
+        {
+            onError?.Invoke("Scenario filename and data are required");
+            yield break;
+        }
+
+        var reqBody = new SaveScenarioRequest
+        {
+            fileName = fileName,
+            scenario = scenario
+        };
+
+        string json = JsonUtility.ToJson(reqBody);
+        string url = CombineUrl(apiBaseUrl, "/api/scenarios");
+
+        using (var req = new UnityWebRequest(url, "POST"))
+        {
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+            req.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            req.downloadHandler = new DownloadHandlerBuffer();
+            req.SetRequestHeader("Content-Type", "application/json");
+            req.timeout = 15;
+
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"Save scenario failed: {req.error}");
+                onError?.Invoke("Failed to save scenario (server unreachable)");
+                yield break;
+            }
+
+            string respJson = req.downloadHandler.text;
+            Debug.Log($"Save scenario response: {respJson}");
+
+            SaveScenarioResponse response;
+            try
+            {
+                response = JsonUtility.FromJson<SaveScenarioResponse>(respJson);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed parsing response: {e.Message}");
+                onError?.Invoke("Bad server response");
+                yield break;
+            }
+
+            if (!response.success)
+            {
+                onError?.Invoke(response.message ?? "Failed to save scenario");
+                yield break;
+            }
+
+            Debug.Log($"Scenario saved successfully: {fileName}");
+            onSuccess?.Invoke(response);
+        }
+    }
+
     public void Logout()
     {
         currentUser = null;
@@ -217,3 +282,4 @@ public class RegisterResponse
     public bool success;
     public string message;
 }
+
