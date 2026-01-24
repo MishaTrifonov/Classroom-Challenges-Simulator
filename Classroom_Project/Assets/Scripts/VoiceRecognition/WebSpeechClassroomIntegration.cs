@@ -19,6 +19,12 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
     [Tooltip("Auto-start voice recognition when scene loads (requires user permission)")]
     public bool autoStartVoiceRecognition = false;
 
+    [Header("Debug")]
+    [Tooltip("Press this key to trigger a test question (for debugging bubbles without voice)")]
+    public KeyCode debugQuestionKey = KeyCode.T;
+    [Tooltip("Test question to ask when debug key is pressed")]
+    public string debugTestQuestion = "מה שלומכם כיתה? איך אתם היום?";
+
     // Command mappings
     private Dictionary<string[], System.Action> commandActions;
 
@@ -68,6 +74,24 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
             webSpeech.StartRecording();
             if (logCommands)
                 Debug.Log("[VoiceCommand] Voice recognition started automatically");
+        }
+    }
+
+    void Update()
+    {
+        // Debug: Press T (or configured key) to trigger a test question
+        if (Input.GetKeyDown(debugQuestionKey))
+        {
+            Debug.Log($"[DEBUG] Manually triggering test question: '{debugTestQuestion}'");
+
+            // Show feedback like voice would
+            if (teacherUI != null)
+            {
+                teacherUI.ShowFeedback($"המורה אמר: {debugTestQuestion}", Color.cyan);
+            }
+
+            // Trigger the question processing
+            ProcessTeacherQuestion(debugTestQuestion, null);
         }
     }
 
