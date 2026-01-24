@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// Simple camera controller for navigating the classroom view.
@@ -37,22 +38,66 @@ public class CameraController : MonoBehaviour
     public Vector3 minBounds = new Vector3(-20, 5, -20);
     public Vector3 maxBounds = new Vector3(20, 30, 20);
     
+    [Header("Auto Focus Settings")]
+    [Tooltip("Enable automatic camera focus on students who want to answer")]
+    public bool autoFocusOnEagerStudents = true;
+    
+    [Tooltip("How fast the camera moves when focusing on a student")]
+    public float focusSpeed = 5f;
+    
+    [Tooltip("Distance from student when focusing")]
+    public float focusDistance = 8f;
+    
+    [Tooltip("Height offset when focusing on student")]
+    public float focusHeight = 2f;
+    
     // Internal state
     private Vector3 lastMousePosition;
     private bool isRotating = false;
     private float currentZoom = 15f;
+    private bool isFocusing = false;
+    private Coroutine focusCoroutine;
 
     void Start()
     {
-        // Set initial zoom
-        currentZoom = transform.position.y;
+        // Set initial zoom, but clamp it to valid range
+        currentZoom = Mathf.Clamp(transform.position.y, minZoom, maxZoom);
+        
+        // If camera is outside bounds and bounds are enabled, adjust position
+        if (useBounds)
+        {
+            Vector3 pos = transform.position;
+            bool needsAdjustment = false;
+            
+            if (pos.y < minBounds.y)
+            {
+                pos.y = minBounds.y;
+                currentZoom = minBounds.y;
+                needsAdjustment = true;
+            }
+            else if (pos.y > maxBounds.y)
+            {
+                pos.y = maxBounds.y;
+                currentZoom = maxBounds.y;
+                needsAdjustment = true;
+            }
+            
+            if (needsAdjustment)
+            {
+                transform.position = pos;
+            }
+        }
     }
 
     void Update()
     {
-        HandleMovement();
-        HandleRotation();
-        HandleZoom();
+        // Only allow manual control if not currently focusing
+        if (!isFocusing)
+        {
+            HandleMovement();
+            HandleRotation();
+            HandleZoom();
+        }
     }
 
     /// <summary>
@@ -172,13 +217,97 @@ public class CameraController : MonoBehaviour
     }
 
     /// <summary>
+    /// Smoothly focus camera on a student transform
+    /// </summary>
+    public void FocusOnStudent(Transform studentTransform, System.Action onComplete = null)
+    {
+        if (studentTransform == null)
+            return;
+
+        // Stop any existing focus
+        if (focusCoroutine != null)
+        {
+            StopCoroutine(focusCoroutine);
+        }
+
+        focusCoroutine = StartCoroutine(FocusOnStudentCoroutine(studentTransform, onComplete));
+    }
+
+    /// <summary>
+    /// Coroutine to smoothly move camera to focus on a student
+    /// </summary>
+    private IEnumerator FocusOnStudentCoroutine(Transform studentTransform, System.Action onComplete)
+    {
+        isFocusing = true;
+        
+        Vector3 startPosition = transform.position;
+        Quaternion startRotation = transform.rotation;
+        
+        // Calculate target position: offset from student at a good viewing angle
+        Vector3 studentPosition = studentTransform.position;
+        Vector3 targetPosition = studentPosition + Vector3.up * focusHeight + Vector3.back * focusDistance;
+        
+        // Calculate target rotation: look at the student
+        Vector3 directionToStudent = (studentPosition - targetPosition).normalized;
+        Quaternion targetRotation = Quaternion.LookRotation(directionToStudent);
+        
+        float elapsed = 0f;
+        float duration = Vector3.Distance(startPosition, targetPosition) / focusSpeed;
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+            
+            transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+            transform.rotation = Quaternion.Slerp(startRotation, targetRotation, t);
+            
+            // Update current zoom to match Y position
+            currentZoom = transform.position.y;
+            
+            yield return null;
+        }
+        
+        // Ensure we're exactly at target
+        transform.position = targetPosition;
+        transform.rotation = targetRotation;
+        currentZoom = targetPosition.y;
+        
+        isFocusing = false;
+        
+        // Call completion callback if provided
+        onComplete?.Invoke();
+    }
+
+    /// <summary>
     /// Reset camera to default position
     /// </summary>
     public void ResetCamera()
     {
+        // Stop any active focus
+        if (focusCoroutine != null)
+        {
+            StopCoroutine(focusCoroutine);
+            focusCoroutine = null;
+            isFocusing = false;
+        }
+        
         transform.position = new Vector3(0, 15, -10);
         transform.rotation = Quaternion.Euler(30, 0, 0);
         currentZoom = 15f;
+    }
+    
+    /// <summary>
+    /// Stop focusing and return to manual control
+    /// </summary>
+    public void StopFocusing()
+    {
+        if (focusCoroutine != null)
+        {
+            StopCoroutine(focusCoroutine);
+            focusCoroutine = null;
+        }
+        isFocusing = false;
     }
 
     // Draw bounds in editor for visualization

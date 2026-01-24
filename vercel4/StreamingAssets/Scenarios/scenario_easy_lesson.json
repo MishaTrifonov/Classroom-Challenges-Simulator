@@ -1,0 +1,57 @@
+{
+  "scenarioName": "Easy Classroom - Calm Review Lesson",
+  "description": "A relaxed 9th grade math review session after a successful quiz. Most students are in a good mood and generally cooperative.",
+  "difficulty": "Easy",
+  "studentProfiles": [
+    {
+      "id": "student_001",
+      "name": "Lior Cohen",
+      "extroversion": 0.5,
+      "sensitivity": 0.4,
+      "rebelliousness": 0.1,
+      "academicMotivation": 0.8,
+      "initialHappiness": 7.0,
+      "initialBoredom": 2.0
+    },
+    {
+      "id": "student_002",
+      "name": "Yael Levi",
+      "extroversion": 0.6,
+      "sensitivity": 0.5,
+      "rebelliousness": 0.2,
+      "academicMotivation": 0.7,
+      "initialHappiness": 6.5,
+      "initialBoredom": 3.0
+    },
+    {
+      "id": "student_003",
+      "name": "Omer Rosen",
+      "extroversion": 0.4,
+      "sensitivity": 0.6,
+      "rebelliousness": 0.1,
+      "academicMotivation": 0.9,
+      "initialHappiness": 7.5,
+      "initialBoredom": 1.5
+    },
+    {
+      "id": "student_004",
+      "name": "Noga Ben-David",
+      "extroversion": 0.3,
+      "sensitivity": 0.5,
+      "rebelliousness": 0.2,
+      "academicMotivation": 0.6,
+      "initialHappiness": 6.0,
+      "initialBoredom": 3.0
+    },
+    {
+      "id": "student_005",
+      "name": "Eitan Shalev",
+      "extroversion": 0.7,
+      "sensitivity": 0.3,
+      "rebelliousness": 0.3,
+      "academicMotivation": 0.7,
+      "initialHappiness": 7.0,
+      "initialBoredom": 2.5
+    }
+  ]
+}

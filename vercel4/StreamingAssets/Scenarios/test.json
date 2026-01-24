@@ -1,0 +1,27 @@
+{
+  "scenarioName": "Test Scenario",
+  "description": "Basic classroom test",
+  "difficulty": "Easy",
+  "studentProfiles": [
+    {
+      "id": "S1",
+      "name": "Dana",
+      "extroversion": 0.7,
+      "sensitivity": 0.4,
+      "rebelliousness": 0.2,
+      "academicMotivation": 0.8,
+      "initialHappiness": 6,
+      "initialBoredom": 2
+    },
+    {
+      "id": "S2",
+      "name": "Noam",
+      "extroversion": 0.3,
+      "sensitivity": 0.8,
+      "rebelliousness": 0.1,
+      "academicMotivation": 0.6,
+      "initialHappiness": 5,
+      "initialBoredom": 4
+    }
+  ]
+}

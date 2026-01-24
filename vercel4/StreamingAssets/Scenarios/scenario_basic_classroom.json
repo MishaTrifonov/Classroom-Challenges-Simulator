@@ -1,0 +1,97 @@
+{
+  "scenarioName": "Basic Classroom - Morning Math",
+  "description": "A typical 9th grade mathematics class on a Monday morning. Mix of engaged and distracted students with varying emotional states.",
+  "difficulty": "Medium",
+  "studentProfiles": [
+    {
+      "id": "student_001",
+      "name": "David Cohen",
+      "extroversion": 0.7,
+      "sensitivity": 0.4,
+      "rebelliousness": 0.3,
+      "academicMotivation": 0.8,
+      "initialHappiness": 6.0,
+      "initialBoredom": 2.0
+    },
+    {
+      "id": "student_002",
+      "name": "Maya Levi",
+      "extroversion": 0.8,
+      "sensitivity": 0.6,
+      "rebelliousness": 0.5,
+      "academicMotivation": 0.6,
+      "initialHappiness": 5.0,
+      "initialBoredom": 4.0
+    },
+    {
+      "id": "student_003",
+      "name": "Yosef Mizrahi",
+      "extroversion": 0.3,
+      "sensitivity": 0.8,
+      "rebelliousness": 0.2,
+      "academicMotivation": 0.9,
+      "initialHappiness": 7.0,
+      "initialBoredom": 2.0
+    },
+    {
+      "id": "student_004",
+      "name": "Noa Katz",
+      "extroversion": 0.5,
+      "sensitivity": 0.5,
+      "rebelliousness": 0.7,
+      "academicMotivation": 0.3,
+      "initialHappiness": 4.0,
+      "initialBoredom": 7.0
+    },
+    {
+      "id": "student_005",
+      "name": "Tal Alon",
+      "extroversion": 0.9,
+      "sensitivity": 0.3,
+      "rebelliousness": 0.6,
+      "academicMotivation": 0.5,
+      "initialHappiness": 6.0,
+      "initialBoredom": 5.0
+    },
+    {
+      "id": "student_006",
+      "name": "Sara Ben-Ami",
+      "extroversion": 0.4,
+      "sensitivity": 0.7,
+      "rebelliousness": 0.2,
+      "academicMotivation": 0.8,
+      "initialHappiness": 5.0,
+      "initialBoredom": 3.0
+    },
+    {
+      "id": "student_007",
+      "name": "Aviv Shapira",
+      "extroversion": 0.6,
+      "sensitivity": 0.5,
+      "rebelliousness": 0.8,
+      "academicMotivation": 0.2,
+      "initialHappiness": 3.0,
+      "initialBoredom": 8.0
+    },
+    {
+      "id": "student_008",
+      "name": "Roni Peretz",
+      "extroversion": 0.5,
+      "sensitivity": 0.6,
+      "rebelliousness": 0.4,
+      "academicMotivation": 0.7,
+      "initialHappiness": 6.0,
+      "initialBoredom": 3.0
+    },
+    {
+      "id": "student_009",
+      "name": "Adi Friedman",
+      "extroversion": 0.7,
+      "sensitivity": 0.4,
+      "rebelliousness": 0.5,
+      "academicMotivation": 0.6,
+      "initialHappiness": 5.0,
+      "initialBoredom": 4.0
+    }
+  ]
+}

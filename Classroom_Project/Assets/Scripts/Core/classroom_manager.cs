@@ -23,6 +23,10 @@ public class ClassroomManager : MonoBehaviour
     [Header("Teacher Interface")]
     public TeacherUI teacherUI;
     
+    [Header("Camera Control")]
+    [Tooltip("Camera controller for automatic focusing on eager students")]
+    public CameraController cameraController;
+    
     [Header("Session Tracking")]
     public SessionData currentSession;
     private float sessionStartTime;
@@ -33,6 +37,10 @@ public class ClassroomManager : MonoBehaviour
     public int disruptionCount = 0;
     public int positiveInterventions = 0;
     public int negativeInterventions = 0;
+    
+    // Track which students are eager to answer
+    private Dictionary<StudentAgent, bool> studentEagernessState = new Dictionary<StudentAgent, bool>();
+    private StudentAgent currentlyFocusedStudent = null;
 
     void Start()
     {
@@ -66,6 +74,12 @@ public class ClassroomManager : MonoBehaviour
     void Update()
     {
         UpdateClassMetrics();
+        
+        // Monitor students for eagerness to answer
+        if (cameraController != null && cameraController.autoFocusOnEagerStudents)
+        {
+            MonitorStudentEagerness();
+        }
     }
 
     /// <summary>
@@ -667,6 +681,67 @@ public class ClassroomManager : MonoBehaviour
 
 
 
+    /// <summary>
+    /// Monitor students for when they become eager to answer and focus camera on them
+    /// </summary>
+    void MonitorStudentEagerness()
+    {
+        // Only focus on one student at a time
+        if (currentlyFocusedStudent != null)
+            return;
+        
+        foreach (StudentAgent student in activeStudents)
+        {
+            if (student == null || student.IsOnBreak())
+                continue;
+            
+            // Check if student has StudentQuestionResponder component
+            StudentQuestionResponder responder = student.GetComponent<StudentQuestionResponder>();
+            if (responder == null)
+                continue;
+            
+            bool isEager = responder.HasAnswerReady();
+            bool wasEager = studentEagernessState.ContainsKey(student) && studentEagernessState[student];
+            
+            // Update state
+            studentEagernessState[student] = isEager;
+            
+            // If student just became eager (wasn't eager before, but is now)
+            if (!wasEager && isEager)
+            {
+                // Focus camera on this student
+                FocusCameraOnStudent(student);
+                currentlyFocusedStudent = student;
+                Debug.Log($"[ClassroomManager] Camera focusing on {student.studentName} who wants to answer");
+                break; // Only focus on the first eager student
+            }
+            
+            // If student is no longer eager, clear focus and return to manual control
+            if (wasEager && !isEager && currentlyFocusedStudent == student)
+            {
+                if (cameraController != null)
+                {
+                    cameraController.StopFocusing();
+                }
+                currentlyFocusedStudent = null;
+                Debug.Log($"[ClassroomManager] {student.studentName} is no longer eager, returning camera to manual control");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Focus camera on a specific student
+    /// </summary>
+    void FocusCameraOnStudent(StudentAgent student)
+    {
+        if (student == null || cameraController == null)
+            return;
+        
+        cameraController.FocusOnStudent(student.transform, () => {
+            Debug.Log($"[ClassroomManager] Camera finished focusing on {student.studentName}");
+        });
+    }
+    
     /// <summary>
     /// Placeholder for database persistence
     /// </summary>

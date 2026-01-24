@@ -1,0 +1,107 @@
+{
+  "scenarioName": "Friday Afternoon - Science Lab",
+  "description": "Last period on Friday afternoon in a science class. Students are tired and eager for the weekend. Some are hyperactive while others are completely checked out.",
+  "difficulty": "Hard",
+  "studentProfiles": [
+    {
+      "id": "student_001",
+      "name": "Ella Rosenberg",
+      "extroversion": 0.9,
+      "sensitivity": 0.3,
+      "rebelliousness": 0.7,
+      "academicMotivation": 0.4,
+      "initialHappiness": 8.0,
+      "initialBoredom": 7.0
+    },
+    {
+      "id": "student_002",
+      "name": "Omer Goldstein",
+      "extroversion": 0.4,
+      "sensitivity": 0.9,
+      "rebelliousness": 0.1,
+      "academicMotivation": 0.8,
+      "initialHappiness": 4.0,
+      "initialBoredom": 6.0
+    },
+    {
+      "id": "student_003",
+      "name": "Shira Malka",
+      "extroversion": 0.8,
+      "sensitivity": 0.5,
+      "rebelliousness": 0.8,
+      "academicMotivation": 0.2,
+      "initialHappiness": 7.0,
+      "initialBoredom": 8.0
+    },
+    {
+      "id": "student_004",
+      "name": "Itai Davidov",
+      "extroversion": 0.6,
+      "sensitivity": 0.6,
+      "rebelliousness": 0.6,
+      "academicMotivation": 0.5,
+      "initialHappiness": 5.0,
+      "initialBoredom": 7.0
+    },
+    {
+      "id": "student_005",
+      "name": "Lior Avraham",
+      "extroversion": 0.3,
+      "sensitivity": 0.7,
+      "rebelliousness": 0.2,
+      "academicMotivation": 0.9,
+      "initialHappiness": 6.0,
+      "initialBoredom": 5.0
+    },
+    {
+      "id": "student_006",
+      "name": "Yael Saban",
+      "extroversion": 0.9,
+      "sensitivity": 0.4,
+      "rebelliousness": 0.9,
+      "academicMotivation": 0.3,
+      "initialHappiness": 9.0,
+      "initialBoredom": 9.0
+    },
+    {
+      "id": "student_007",
+      "name": "Noam Biton",
+      "extroversion": 0.5,
+      "sensitivity": 0.8,
+      "rebelliousness": 0.3,
+      "academicMotivation": 0.7,
+      "initialHappiness": 5.0,
+      "initialBoredom": 6.0
+    },
+    {
+      "id": "student_008",
+      "name": "Michal Levy",
+      "extroversion": 0.2,
+      "sensitivity": 0.9,
+      "rebelliousness": 0.1,
+      "academicMotivation": 0.9,
+      "initialHappiness": 3.0,
+      "initialBoredom": 4.0
+    },
+    {
+      "id": "student_009",
+      "name": "Ori Dahan",
+      "extroversion": 0.7,
+      "sensitivity": 0.3,
+      "rebelliousness": 0.7,
+      "academicMotivation": 0.4,
+      "initialHappiness": 7.0,
+      "initialBoredom": 8.0
+    },
+    {
+      "id": "student_010",
+      "name": "Tamar Cohen",
+      "extroversion": 0.6,
+      "sensitivity": 0.6,
+      "rebelliousness": 0.5,
+      "academicMotivation": 0.6,
+      "initialHappiness": 6.0,
+      "initialBoredom": 7.0
+    }
+  ]
+}

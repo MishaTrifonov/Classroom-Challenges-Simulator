@@ -130,7 +130,7 @@ public class TeacherUI : MonoBehaviour
             float elapsed = Time.time - sessionStartTime;
             int minutes = Mathf.FloorToInt(elapsed / 60f);
             int seconds = Mathf.FloorToInt(elapsed % 60f);
-            sessionTimeText.text = $"זמן: {minutes:00}:{seconds:00}";
+            sessionTimeText.text = $"{minutes:00}:{seconds:00}";
         }
     }
 
