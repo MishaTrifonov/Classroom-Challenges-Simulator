@@ -232,8 +232,8 @@ public class TeacherUI : MonoBehaviour
         if (selectedStudentText != null)
         {
             selectedStudentText.text = $"נבחר: {student.studentName}\n" +
-                                      $"מצב: {GetStateHebrew(student.currentState)}\n" +
-                                      $"רגשות: {student.emotions}";
+                                      $"מצב: {GetStateHebrew(student.currentState)}\n\n" +
+                                      $"רגשות:\n{student.emotions.ToReadableString()}";
         }
 
         // Show student info panel with detailed vectors

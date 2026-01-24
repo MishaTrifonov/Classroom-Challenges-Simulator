@@ -173,6 +173,71 @@ public class EmotionVector
     {
         return $"H:{Happiness:F1} S:{Sadness:F1} F:{Frustration:F1} B:{Boredom:F1} A:{Anger:F1}";
     }
+
+    /// <summary>
+    /// Get a more readable emotion display with full names and visual indicators
+    /// </summary>
+    public string ToReadableString()
+    {
+        return $"שמחה: {GetEmotionBar(Happiness)}\n" +
+               $"עצב: {GetEmotionBar(Sadness)}\n" +
+               $"תסכול: {GetEmotionBar(Frustration)}\n" +
+               $"שעמום: {GetEmotionBar(Boredom)}\n" +
+               $"כעס: {GetEmotionBar(Anger)}";
+    }
+
+    /// <summary>
+    /// Get a visual bar representation of an emotion value
+    /// </summary>
+    private string GetEmotionBar(float value)
+    {
+        int filledBlocks = Mathf.RoundToInt(value);
+        int emptyBlocks = 10 - filledBlocks;
+        string bar = new string('█', filledBlocks) + new string('░', emptyBlocks);
+        return $"{bar} {value:F1}/10";
+    }
+
+    /// <summary>
+    /// Get emotion level description in Hebrew
+    /// </summary>
+    public string GetEmotionLevelDescription(float value)
+    {
+        if (value >= 8f) return "גבוה מאוד";
+        if (value >= 6f) return "גבוה";
+        if (value >= 4f) return "בינוני";
+        if (value >= 2f) return "נמוך";
+        return "נמוך מאוד";
+    }
+
+    /// <summary>
+    /// Get color for emotion level (for UI display)
+    /// </summary>
+    public Color GetEmotionColor(float value)
+    {
+        if (value >= 8f) return new Color(1f, 0.2f, 0.2f); // Red - Critical
+        if (value >= 6f) return new Color(1f, 0.6f, 0f);   // Orange - High
+        if (value >= 4f) return new Color(1f, 1f, 0f);     // Yellow - Medium
+        return new Color(0.2f, 1f, 0.2f);                  // Green - Low
+    }
+
+    /// <summary>
+    /// Get individual emotion display with name, value, and description
+    /// </summary>
+    public string GetEmotionDisplay(string emotionName, float value)
+    {
+        string level = GetEmotionLevelDescription(value);
+        return $"{emotionName}: {value:F1}/10 ({level})";
+    }
+
+    /// <summary>
+    /// Get a compact, user-friendly display for UI
+    /// </summary>
+    public string ToCompactDisplay()
+    {
+        return $"😊 שמחה: {Happiness:F1} | 😢 עצב: {Sadness:F1}\n" +
+               $"😤 תסכול: {Frustration:F1} | 😴 שעמום: {Boredom:F1}\n" +
+               $"😠 כעס: {Anger:F1}";
+    }
 }
 
 /// <summary>
