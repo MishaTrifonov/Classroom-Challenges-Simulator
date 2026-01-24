@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<< HEAD
 guid: d74880d6556c5dd45a6c8f613d50b22f
+=======
+guid: 37cea5720a0946e47b4ae5c65be468ca
+>>>>>>> f5d1a725 (Update student visuals/behavior and break UI)
 TextScriptImporter:
   externalObjects: {}
   userData: 

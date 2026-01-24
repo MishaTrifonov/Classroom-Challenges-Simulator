@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<< HEAD
 guid: 2ad82d2c81c142942a97028adaae6a16
+=======
+guid: ad3cc638625347948b1c8fd847230615
+>>>>>>> f5d1a725 (Update student visuals/behavior and break UI)
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2

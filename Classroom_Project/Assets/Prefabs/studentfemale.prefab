@@ -246,6 +246,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: de94720d5e30f1544b10af7ed5c7adc0, type: 3}
       insertIndex: -1
       addedObject: {fileID: -1395995794606012268}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: de94720d5e30f1544b10af7ed5c7adc0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 981896868890207363}
   m_SourcePrefab: {fileID: 100100000, guid: de94720d5e30f1544b10af7ed5c7adc0, type: 3}
 --- !u!1 &512144267061961371 stripped
 GameObject:
@@ -312,3 +315,22 @@ MonoBehaviour:
   walkSpeed: 2
   seatPosition: {fileID: 0}
   stateCheckInterval: 2
+--- !u!114 &981896868890207363
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 512144267061961371}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad3cc638625347948b1c8fd847230615, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  studentAgent: {fileID: 0}
+  responseBubble: {fileID: 0}
+  reactionAnimator: {fileID: 0}
+  baseResponseThreshold: 0.5
+  previewDelay: 1
+  eagerBubbleDuration: 5
+  showEagerness: 1

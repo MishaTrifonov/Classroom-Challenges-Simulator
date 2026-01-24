@@ -34,6 +34,7 @@ public class StudentAgent : MonoBehaviour
     public Animator animator;
     public Renderer studentRenderer;
     private Color originalColor;
+    private StudentReactionAnimator reactionAnimator;
 
     [Header("Movement")]
     public NavMeshAgent navAgent;
@@ -80,6 +81,17 @@ public class StudentAgent : MonoBehaviour
             Debug.LogWarning($"[StudentAgent] {studentName}: No renderer found! Student may be invisible.");
         }
 
+        // Get StudentReactionAnimator component
+        reactionAnimator = GetComponent<StudentReactionAnimator>();
+        if (reactionAnimator == null)
+        {
+            reactionAnimator = GetComponentInChildren<StudentReactionAnimator>();
+        }
+        if (reactionAnimator == null)
+        {
+            Debug.LogWarning($"[StudentAgent] {studentName}: StudentReactionAnimator component not found! Student reactions may not work. Please add StudentReactionAnimator component to the student GameObject.");
+        }
+
         // Initialize NavMeshAgent if not assigned
         if (navAgent == null)
             navAgent = GetComponent<NavMeshAgent>();
@@ -111,6 +123,10 @@ public class StudentAgent : MonoBehaviour
 
         UpdateNearbyStudents();
         InvokeRepeating(nameof(UpdateNearbyStudents), 0f, 5f);
+
+        // Test response bubble
+        GetComponent<StudentResponseBubble>()
+            ?.ShowEagerBubble("בדיקה");
     }
 
     void Update()
@@ -329,6 +345,12 @@ public class StudentAgent : MonoBehaviour
     {
         float intensityModifier = 1f + sensitivity;
         emotions.ApplyTeacherAction(action, intensityModifier);
+
+        // Trigger reaction animation if StudentReactionAnimator is available
+        if (reactionAnimator != null)
+        {
+            reactionAnimator.ReactToTeacherAction(action.Type);
+        }
 
         // Immediate behavioral response
         switch (action.Type)

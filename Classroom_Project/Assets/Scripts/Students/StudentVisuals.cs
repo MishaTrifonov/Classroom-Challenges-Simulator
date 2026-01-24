@@ -562,17 +562,4 @@ public enum ReactionType
     Shocked,
     Confused
 }
-
-/// <summary>
-/// Student behavioral states (matches StudentAgent states)
-/// </summary>
-public enum StudentState
-{
-    Listening,
-    Engaged,
-    Distracted,
-    SideTalk,
-    Arguing,
-    Withdrawn
-}
 #endregion
