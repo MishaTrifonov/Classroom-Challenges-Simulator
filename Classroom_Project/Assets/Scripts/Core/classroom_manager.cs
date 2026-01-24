@@ -45,6 +45,9 @@ public class ClassroomManager : MonoBehaviour
     void Start()
     {
         InitializeSession();
+        
+        // Ensure main camera is active from the start
+        EnsureMainCameraActive();
 
         // Load scenario chosen in ScenarioSelectionUI
         string selectedScenario = PlayerPrefs.GetString("SelectedScenario", "");
@@ -121,6 +124,10 @@ public class ClassroomManager : MonoBehaviour
 
         activeStudents = studentSpawner.Spawn(scenario.studentProfiles);
 
+        // Ensure main camera is always active and disable all student cameras
+        // Call immediately and also after a short delay to catch any late-instantiated cameras
+        EnsureMainCameraActive();
+        StartCoroutine(EnsureMainCameraActiveDelayed());
 
         Debug.Log($"Loaded scenario: {scenario.scenarioName} with {activeStudents.Count} students");
     }
@@ -740,6 +747,64 @@ public class ClassroomManager : MonoBehaviour
         cameraController.FocusOnStudent(student.transform, () => {
             Debug.Log($"[ClassroomManager] Camera finished focusing on {student.studentName}");
         });
+    }
+    
+    /// <summary>
+    /// Coroutine to ensure main camera is active after a delay (catches late-instantiated cameras)
+    /// </summary>
+    IEnumerator EnsureMainCameraActiveDelayed()
+    {
+        yield return new WaitForSeconds(0.1f);
+        EnsureMainCameraActive();
+    }
+    
+    /// <summary>
+    /// Ensure main camera is active and disable all student cameras
+    /// </summary>
+    void EnsureMainCameraActive()
+    {
+        // Find and enable the main camera
+        Camera mainCam = Camera.main;
+        if (mainCam == null)
+        {
+            // Try to find camera tagged as MainCamera
+            GameObject mainCamObj = GameObject.FindGameObjectWithTag("MainCamera");
+            if (mainCamObj != null)
+            {
+                mainCam = mainCamObj.GetComponent<Camera>();
+            }
+        }
+        
+        if (mainCam != null)
+        {
+            mainCam.enabled = true;
+            mainCam.gameObject.SetActive(true);
+            Debug.Log("[ClassroomManager] Main camera enabled and activated");
+        }
+        else
+        {
+            Debug.LogWarning("[ClassroomManager] Main camera not found!");
+        }
+        
+        // Disable all student cameras
+        Camera[] allCameras = FindObjectsOfType<Camera>();
+        int disabledCount = 0;
+        foreach (Camera cam in allCameras)
+        {
+            // Skip the main camera
+            if (cam == mainCam || cam.tag == "MainCamera")
+                continue;
+            
+            // Disable any camera that's not the main camera
+            // This will catch student cameras and any other cameras
+            cam.enabled = false;
+            disabledCount++;
+        }
+        
+        if (disabledCount > 0)
+        {
+            Debug.Log($"[ClassroomManager] Disabled {disabledCount} non-main camera(s)");
+        }
     }
     
     /// <summary>
