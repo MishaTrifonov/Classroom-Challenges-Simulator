@@ -25,6 +25,7 @@ public class TeacherUI : MonoBehaviour
     public Button callToBoardButton;
     public Button giveBreakButton;
     public Button removeStudentButton;
+    public Button switchPlacesButton;
 
     [Header("Student Selection")]
     public TextMeshProUGUI selectedStudentText;
@@ -39,6 +40,16 @@ public class TeacherUI : MonoBehaviour
     [Header("Break Duration Panel")]
     [Tooltip("Reference to BreakDurationPanelUI component for selecting break duration")]
     public BreakDurationPanelUI breakDurationPanel;
+
+    [Header("Seat Swap Panel")]
+    [Tooltip("Reference to SeatSwapPanelUI component for seat switching")]
+    public SeatSwapPanelUI seatSwapPanel;
+
+    [Header("Seat Switching State")]
+    private bool isSeatSwitchingMode = false;
+    private StudentAgent firstStudentForSwap;
+    private StudentAgent secondStudentForSwap;
+    private Transform secondSeatForSwap;
 
     [Header("Feedback Panel")]
     public GameObject feedbackPanel;
@@ -100,6 +111,9 @@ public class TeacherUI : MonoBehaviour
 
         if (removeStudentButton != null)
             removeStudentButton.onClick.AddListener(() => ExecuteAction(ActionType.RemoveFromClass));
+
+        if (switchPlacesButton != null)
+            switchPlacesButton.onClick.AddListener(OnSwitchPlacesButtonClicked);
     }
 
     /// <summary>
@@ -139,7 +153,7 @@ public class TeacherUI : MonoBehaviour
     /// </summary>
     void CheckForStudentSelection()
     {
-        // Check for right-click to view student info (works even in change seating mode)
+        // Check for right-click to view student info (works even in seat switching mode)
         if (Input.GetMouseButtonDown(1)) // Right mouse button
         {
             bool clickingOnUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
@@ -147,13 +161,13 @@ public class TeacherUI : MonoBehaviour
 
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
-            
+
             if (Physics.Raycast(ray, out hit, 100f))
             {
                 StudentAgent student = hit.collider.GetComponentInParent<StudentAgent>();
                 if (student != null)
                 {
-                    // Right-click always shows student info, even in change seating mode
+                    // Right-click always shows student info, even in seat switching mode
                     SelectStudent(student, forceShowInfo: true);
                     return;
                 }
@@ -165,25 +179,54 @@ public class TeacherUI : MonoBehaviour
         {
             // Check if we're clicking on a UI element
             bool clickingOnUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-            
-            // Always try to raycast for 3D objects (students) first
+
+            // Always try to raycast for 3D objects (students/seats) first
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
-            
+
             if (Physics.Raycast(ray, out hit, 100f))
             {
                 StudentAgent student = hit.collider.GetComponentInParent<StudentAgent>();
-                if (student != null)
+
+                // In seat switching mode, handle second selection
+                if (isSeatSwitchingMode)
                 {
-                    // Always allow clicking on students, regardless of UI
-                    SelectStudent(student);
-                    return;
+                    if (student != null)
+                    {
+                        // Student clicked - use as second selection
+                        HandleSeatSwitchingSecondSelection(student, null);
+                        return;
+                    }
+                    else
+                    {
+                        // Check if we hit a seat/spawn point
+                        Transform hitTransform = hit.collider.transform;
+
+                        // Check if the hit object is tagged as a seat or has "Seat" or "SpawnPoint" in its name
+                        if (hitTransform.CompareTag("Seat") ||
+                            hitTransform.name.Contains("Seat") ||
+                            hitTransform.name.Contains("SpawnPoint"))
+                        {
+                            HandleSeatSwitchingSecondSelection(null, hitTransform);
+                            return;
+                        }
+                    }
+                }
+                else
+                {
+                    // Normal selection mode
+                    if (student != null)
+                    {
+                        // Always allow clicking on students, regardless of UI
+                        SelectStudent(student);
+                        return;
+                    }
                 }
             }
-            
-            // If we didn't hit a student, handle deselection
+
+            // If we didn't hit a student or seat, handle deselection
             // Only deselect if we're NOT clicking on UI
-            if (!clickingOnUI)
+            if (!clickingOnUI && !isSeatSwitchingMode)
             {
                 // Clicked on empty space or something that's not a student
                 DeselectStudent();
@@ -486,6 +529,172 @@ public class TeacherUI : MonoBehaviour
     {
         if (feedbackPanel != null)
             feedbackPanel.SetActive(false);
+    }
+
+    /// <summary>
+    /// Handle switch places button click - enter seat switching mode
+    /// </summary>
+    void OnSwitchPlacesButtonClicked()
+    {
+        if (selectedStudent == null)
+        {
+            ShowFeedback("אנא בחר תלמיד תחילה!", Color.yellow);
+            return;
+        }
+
+        // Enter seat switching mode
+        EnterSeatSwitchingMode(selectedStudent);
+    }
+
+    /// <summary>
+    /// Enter seat switching mode with the first selected student
+    /// </summary>
+    void EnterSeatSwitchingMode(StudentAgent firstStudent)
+    {
+        isSeatSwitchingMode = true;
+        firstStudentForSwap = firstStudent;
+        secondStudentForSwap = null;
+        secondSeatForSwap = null;
+
+        // Apply red outline to first student
+        var feedback = firstStudentForSwap.GetComponentInChildren<StudentVisualFeedback>();
+        if (feedback != null)
+        {
+            feedback.SetSelected(false);  // Remove blue selection
+            feedback.SetSwapSelected(true);  // Add red swap selection
+        }
+
+        // Show the seat swap panel
+        if (seatSwapPanel != null)
+        {
+            seatSwapPanel.ShowPanel(firstStudentForSwap, OnSeatSwapConfirmed, ExitSeatSwitchingMode);
+        }
+
+        // Hide action menu during swap mode
+        if (actionMenu != null)
+            actionMenu.SetActive(false);
+
+        ShowFeedback($"בחר תלמיד שני או מקום ריק להחלפה עם {firstStudentForSwap.studentName}", Color.cyan);
+
+        Debug.Log($"Entered seat switching mode with {firstStudentForSwap.studentName}");
+    }
+
+    /// <summary>
+    /// Exit seat switching mode and reset selections
+    /// </summary>
+    void ExitSeatSwitchingMode()
+    {
+        // Remove red outline from first student
+        if (firstStudentForSwap != null)
+        {
+            var feedback = firstStudentForSwap.GetComponentInChildren<StudentVisualFeedback>();
+            if (feedback != null)
+            {
+                feedback.SetSwapSelected(false);
+            }
+        }
+
+        // Remove selection from second student if any
+        if (secondStudentForSwap != null)
+        {
+            var feedback = secondStudentForSwap.GetComponentInChildren<StudentVisualFeedback>();
+            if (feedback != null)
+            {
+                feedback.SetSelected(false);
+            }
+        }
+
+        isSeatSwitchingMode = false;
+        firstStudentForSwap = null;
+        secondStudentForSwap = null;
+        secondSeatForSwap = null;
+
+        Debug.Log("Exited seat switching mode");
+    }
+
+    /// <summary>
+    /// Handle second selection in seat switching mode
+    /// </summary>
+    void HandleSeatSwitchingSecondSelection(StudentAgent student, Transform seat)
+    {
+        // Don't allow selecting the same student
+        if (student != null && student == firstStudentForSwap)
+        {
+            ShowFeedback("לא ניתן להחליף תלמיד עם עצמו!", Color.yellow);
+            return;
+        }
+
+        // Clear previous second selection
+        if (secondStudentForSwap != null)
+        {
+            var prevFeedback = secondStudentForSwap.GetComponentInChildren<StudentVisualFeedback>();
+            if (prevFeedback != null)
+                prevFeedback.SetSelected(false);
+        }
+
+        secondStudentForSwap = student;
+        secondSeatForSwap = seat;
+
+        // Apply blue outline to second student if it's a student
+        if (secondStudentForSwap != null)
+        {
+            var feedback = secondStudentForSwap.GetComponentInChildren<StudentVisualFeedback>();
+            if (feedback != null)
+                feedback.SetSelected(true);
+        }
+
+        // Update the panel
+        if (seatSwapPanel != null)
+        {
+            seatSwapPanel.SetSecondSelection(secondStudentForSwap, secondSeatForSwap);
+        }
+
+        string secondName = secondStudentForSwap != null ? secondStudentForSwap.studentName : seat?.name ?? "מקום ריק";
+        ShowFeedback($"נבחר: {secondName}. לחץ 'החלף' לאישור", Color.green);
+    }
+
+    /// <summary>
+    /// Called when seat swap is confirmed from the panel
+    /// </summary>
+    void OnSeatSwapConfirmed(StudentAgent first, StudentAgent second, Transform seat)
+    {
+        if (first == null)
+        {
+            Debug.LogWarning("TeacherUI: First student is null!");
+            ExitSeatSwitchingMode();
+            return;
+        }
+
+        if (second == null && seat == null)
+        {
+            Debug.LogWarning("TeacherUI: Both second student and seat are null!");
+            ExitSeatSwitchingMode();
+            return;
+        }
+
+        // Execute the seat swap through ClassroomManager
+        if (classroomManager != null)
+        {
+            classroomManager.SwapSeats(first, second, null, seat);
+
+            string swapMessage;
+            if (second != null)
+            {
+                swapMessage = $"הוחלפו מקומות: {first.studentName} ↔ {second.studentName}";
+            }
+            else
+            {
+                swapMessage = $"{first.studentName} הועבר למקום חדש";
+            }
+
+            ShowFeedback(swapMessage, Color.green);
+        }
+
+        // Exit seat switching mode
+        ExitSeatSwitchingMode();
+
+        // Deselect any selected student
+        DeselectStudent();
     }
 
     /// <summary>

@@ -42,6 +42,10 @@ public class StudentVisualFeedback : MonoBehaviour
     public bool isSelected = false;
     public Color selectionColor = Color.blue;
     public GameObject selectionRing;
+
+    [Header("Seat Swap Selection")]
+    public bool isSwapSelected = false;
+    public Color swapSelectionColor = Color.red;
     
     private Color currentBodyColor;
     private Color targetBodyColor;
@@ -133,7 +137,12 @@ public class StudentVisualFeedback : MonoBehaviour
         }
 
         // Apply selection tint if selected
-        if (isSelected)
+        // Swap selection (red) takes priority over normal selection (blue)
+        if (isSwapSelected)
+        {
+            targetBodyColor = Color.Lerp(targetBodyColor, swapSelectionColor, 0.5f);
+        }
+        else if (isSelected)
         {
             targetBodyColor = Color.Lerp(targetBodyColor, selectionColor, 0.5f);
         }
@@ -309,9 +318,20 @@ public class StudentVisualFeedback : MonoBehaviour
     public void SetSelected(bool selected)
     {
         isSelected = selected;
-        
+
         if (selectionRing != null)
-            selectionRing.SetActive(selected);
+            selectionRing.SetActive(selected || isSwapSelected);
+    }
+
+    /// <summary>
+    /// Show swap selection visual (red outline)
+    /// </summary>
+    public void SetSwapSelected(bool selected)
+    {
+        isSwapSelected = selected;
+
+        if (selectionRing != null)
+            selectionRing.SetActive(selected || isSelected);
     }
 
     /// <summary>
