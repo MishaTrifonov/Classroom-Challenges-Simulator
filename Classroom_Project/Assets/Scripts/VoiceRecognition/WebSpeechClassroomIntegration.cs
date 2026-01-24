@@ -281,15 +281,24 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
 
             foreach (var student in classroomManager.activeStudents)
             {
+                if (student == null)
+                    continue;
+
                 // Get or add StudentQuestionResponder component
                 StudentQuestionResponder responder = student.GetComponent<StudentQuestionResponder>();
                 if (responder == null)
                 {
                     responder = student.gameObject.AddComponent<StudentQuestionResponder>();
+
+                    // CRITICAL: Immediately initialize references since Start() won't be called until next frame
+                    // This ensures responseBubble and other references are set before OnQuestionAsked is called
+                    if (logCommands)
+                        Debug.Log($"[VoiceCommand] Added StudentQuestionResponder to {student.studentName}");
                 }
 
                 // Trigger the question for this student
                 // The responder will decide if and how to show eagerness
+                // Note: InitializeReferences() is now called in OnQuestionAsked() to handle dynamic component addition
                 responder.OnQuestionAsked(question);
 
                 // Count how many students are showing eagerness

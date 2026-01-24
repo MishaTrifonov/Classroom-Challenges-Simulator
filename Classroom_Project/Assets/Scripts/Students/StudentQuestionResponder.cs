@@ -33,20 +33,39 @@ public class StudentQuestionResponder : MonoBehaviour
     private Coroutine eagerCoroutine;
     private string currentQuestion = ""; // Store the question student is eager to answer
 
+    void Awake()
+    {
+        // Initialize references immediately when component is added
+        // This ensures references are set even if component is added dynamically at runtime
+        InitializeReferences();
+    }
+
     void Start()
+    {
+        // Ensure references are initialized (in case Awake wasn't called)
+        InitializeReferences();
+    }
+
+    /// <summary>
+    /// Initialize component references. Safe to call multiple times.
+    /// </summary>
+    private void InitializeReferences()
     {
         // Auto-find references if not assigned
         if (studentAgent == null)
             studentAgent = GetComponent<StudentAgent>();
 
         if (responseBubble == null)
+        {
             responseBubble = GetComponentInChildren<StudentResponseBubble>();
+
+            // If not found as child, check on same GameObject
+            if (responseBubble == null)
+                responseBubble = GetComponent<StudentResponseBubble>();
+        }
 
         if (reactionAnimator == null)
             reactionAnimator = GetComponent<StudentReactionAnimator>();
-
-        // Subscribe to question events from WebSpeechClassroomIntegration
-        // This will be called when teacher asks a question
     }
 
     /// <summary>
@@ -54,6 +73,9 @@ public class StudentQuestionResponder : MonoBehaviour
     /// </summary>
     public void OnQuestionAsked(string question)
     {
+        // Ensure references are initialized (critical for dynamically added components)
+        InitializeReferences();
+
         if (studentAgent == null || !showEagerness)
             return;
 
@@ -155,6 +177,11 @@ public class StudentQuestionResponder : MonoBehaviour
         {
             // Show in "eager" mode (small bubble)
             responseBubble.ShowEagerBubble(previewText);
+            Debug.Log($"[StudentQuestionResponder] {studentAgent?.studentName ?? "Student"} showing eager bubble: '{previewText}'");
+        }
+        else
+        {
+            Debug.LogWarning($"[StudentQuestionResponder] {studentAgent?.studentName ?? "Student"} cannot show eager bubble - StudentResponseBubble component is missing!");
         }
 
         // Keep eager bubble visible for duration

@@ -179,6 +179,14 @@ public class StudentSpawner : MonoBehaviour
                     Debug.Log($"[StudentSpawner] Added StudentResponseBubble to {student.studentName}");
                 }
             }
+
+            // Ensure StudentQuestionResponder component exists for question handling
+            StudentQuestionResponder questionResponder = go.GetComponent<StudentQuestionResponder>();
+            if (questionResponder == null)
+            {
+                questionResponder = go.AddComponent<StudentQuestionResponder>();
+                Debug.Log($"[StudentSpawner] Added StudentQuestionResponder to {student.studentName}");
+            }
             
             // Set seat position reference for the student
             if (spawnMode != SpawnMode.Grid && i < seats.Count && seats[i] != null)
