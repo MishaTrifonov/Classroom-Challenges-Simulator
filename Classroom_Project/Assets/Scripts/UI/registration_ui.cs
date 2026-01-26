@@ -93,8 +93,8 @@ public class RegistrationUI : MonoBehaviour
             // Add role options
             roleDropdown.AddOptions(new System.Collections.Generic.List<string>
             {
-                "סטודנט (מורה מתמחה)",
-                "מדריך (מפקח)",
+                "סטודנט - מורה מתמחה",
+                "מדריך - מפקח",
                 "מנהל מערכת"
             });
             
