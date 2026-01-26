@@ -202,6 +202,10 @@ public class ClassroomManager : MonoBehaviour
                 // Fun: reduces boredom / improves mood
                 ExecuteClasswideAction(ActionType.GiveBreak, "Quick class game");
                 ExecuteClasswideAction(ActionType.Praise, "Encouraged participation");
+                // Improve mood for most of the class
+                ImproveClassMood(0.75f, 1.5f); // 75% of students, +1.5 happiness
+                // Trigger positive student responses
+                TriggerPositiveStudentResponses(item);
                 break;
 
             case BagItemType.Book:
@@ -210,8 +214,12 @@ public class ClassroomManager : MonoBehaviour
                 break;
 
             case BagItemType.Music:
-                // Calm: give break
+                // Calm: give break and improve mood
                 ExecuteClasswideAction(ActionType.GiveBreak, "Calming music in background");
+                // Improve mood for most of the class
+                ImproveClassMood(0.75f, 1.5f); // 75% of students, +1.5 happiness
+                // Trigger positive student responses
+                TriggerPositiveStudentResponses(item);
                 break;
         }
 
@@ -253,6 +261,11 @@ public class ClassroomManager : MonoBehaviour
                     Context = $"Quick game break for {student.studentName}"
                 };
                 student.ReceiveTeacherAction(breakAction);
+                // Improve mood
+                student.emotions.Happiness = Mathf.Clamp(student.emotions.Happiness + 1.5f, 1f, 10f);
+                student.emotions.Boredom = Mathf.Clamp(student.emotions.Boredom - 2f, 1f, 10f);
+                // Trigger positive response
+                TriggerStudentPositiveResponse(student, item);
                 break;
 
             case BagItemType.Book:
@@ -262,9 +275,14 @@ public class ClassroomManager : MonoBehaviour
                 break;
 
             case BagItemType.Music:
-                // Calm: give break
+                // Calm: give break and improve mood
                 actionType = ActionType.GiveBreak;
                 context = $"Calming music for {student.studentName}";
+                // Improve mood
+                student.emotions.Happiness = Mathf.Clamp(student.emotions.Happiness + 1.5f, 1f, 10f);
+                student.emotions.Boredom = Mathf.Clamp(student.emotions.Boredom - 2f, 1f, 10f);
+                // Trigger positive response
+                TriggerStudentPositiveResponse(student, item);
                 break;
 
             default:
@@ -819,6 +837,135 @@ public class ClassroomManager : MonoBehaviour
         if (report != null)
         {
             TeacherHomeSceneUI.SaveSessionToHistory(report);
+        }
+    }
+
+    /// <summary>
+    /// Improve mood for a percentage of the class
+    /// </summary>
+    void ImproveClassMood(float percentage, float happinessBoost)
+    {
+        if (activeStudents.Count == 0) return;
+
+        // Calculate how many students to affect
+        int studentsToAffect = Mathf.Max(1, Mathf.RoundToInt(activeStudents.Count * percentage));
+        
+        // Shuffle students to randomly select which ones get the mood boost
+        List<StudentAgent> shuffledStudents = new List<StudentAgent>(activeStudents);
+        for (int i = 0; i < shuffledStudents.Count; i++)
+        {
+            StudentAgent temp = shuffledStudents[i];
+            int randomIndex = Random.Range(i, shuffledStudents.Count);
+            shuffledStudents[i] = shuffledStudents[randomIndex];
+            shuffledStudents[randomIndex] = temp;
+        }
+
+        // Apply mood improvement to selected students
+        for (int i = 0; i < studentsToAffect && i < shuffledStudents.Count; i++)
+        {
+            StudentAgent student = shuffledStudents[i];
+            if (student != null && !student.IsOnBreak())
+            {
+                student.emotions.Happiness = Mathf.Clamp(student.emotions.Happiness + happinessBoost, 1f, 10f);
+                student.emotions.Boredom = Mathf.Clamp(student.emotions.Boredom - 2f, 1f, 10f);
+                student.emotions.Frustration = Mathf.Clamp(student.emotions.Frustration - 1f, 1f, 10f);
+            }
+        }
+
+        Debug.Log($"Improved mood for {studentsToAffect} students");
+    }
+
+    /// <summary>
+    /// Trigger positive student responses for classwide bag items (Game, Music)
+    /// </summary>
+    void TriggerPositiveStudentResponses(BagItemType item)
+    {
+        if (activeStudents.Count == 0) return;
+
+        // Hebrew positive response messages
+        string[] positiveResponses = new string[]
+        {
+            "איזה כייף!",
+            "המשחק הזה טוב!",
+            "זה כיף!",
+            "אני אוהב את זה!",
+            "זה נהדר!",
+            "כיף גדול!",
+            "אני נהנה!",
+            "זה מהנה!"
+        };
+
+        // Trigger responses for about 60-70% of students (randomly)
+        int studentsToRespond = Mathf.Max(1, Mathf.RoundToInt(activeStudents.Count * Random.Range(0.6f, 0.7f)));
+        
+        // Shuffle students to randomly select which ones respond
+        List<StudentAgent> shuffledStudents = new List<StudentAgent>(activeStudents);
+        for (int i = 0; i < shuffledStudents.Count; i++)
+        {
+            StudentAgent temp = shuffledStudents[i];
+            int randomIndex = Random.Range(i, shuffledStudents.Count);
+            shuffledStudents[i] = shuffledStudents[randomIndex];
+            shuffledStudents[randomIndex] = temp;
+        }
+
+        // Trigger responses with slight delays to make it feel natural
+        for (int i = 0; i < studentsToRespond && i < shuffledStudents.Count; i++)
+        {
+            StudentAgent student = shuffledStudents[i];
+            if (student != null && !student.IsOnBreak())
+            {
+                string response = positiveResponses[Random.Range(0, positiveResponses.Length)];
+                float delay = Random.Range(0.2f, 1.5f); // Stagger responses
+                StartCoroutine(ShowStudentResponseDelayed(student, response, delay));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Trigger a positive response from a single student
+    /// </summary>
+    void TriggerStudentPositiveResponse(StudentAgent student, BagItemType item)
+    {
+        if (student == null || student.IsOnBreak()) return;
+
+        // Hebrew positive response messages
+        string[] positiveResponses = new string[]
+        {
+            "איזה כייף!",
+            "המשחק הזה טוב!",
+            "זה כיף!",
+            "אני אוהב את זה!",
+            "זה נהדר!",
+            "כיף גדול!",
+            "אני נהנה!",
+            "זה מהנה!"
+        };
+
+        string response = positiveResponses[Random.Range(0, positiveResponses.Length)];
+        float delay = Random.Range(0.1f, 0.5f);
+        StartCoroutine(ShowStudentResponseDelayed(student, response, delay));
+    }
+
+    /// <summary>
+    /// Coroutine to show student response with a delay
+    /// </summary>
+    IEnumerator ShowStudentResponseDelayed(StudentAgent student, string response, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (student == null) yield break;
+
+        // Find the response bubble component
+        StudentResponseBubble responseBubble = student.GetComponentInChildren<StudentResponseBubble>();
+        if (responseBubble == null)
+        {
+            responseBubble = student.GetComponent<StudentResponseBubble>();
+        }
+
+        if (responseBubble != null)
+        {
+            responseBubble.ShowResponse(response);
+            Debug.Log($"{student.studentName} says: {response}");
         }
     }
 }

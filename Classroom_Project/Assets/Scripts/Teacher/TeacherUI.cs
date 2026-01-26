@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using TMPro;
 using System.Collections.Generic;
 
@@ -26,6 +27,7 @@ public class TeacherUI : MonoBehaviour
     public Button giveBreakButton;
     public Button removeStudentButton;
     public Button switchPlacesButton;
+    public Button endSessionButton;
 
     [Header("Student Selection")]
     public TextMeshProUGUI selectedStudentText;
@@ -57,12 +59,72 @@ public class TeacherUI : MonoBehaviour
     public Image feedbackIcon;
     public float feedbackDuration = 3f;
 
+    [Header("End Session Feedback Panel")]
+    [Tooltip("Panel displaying end session feedback")]
+    public GameObject endSessionFeedbackPanel;
+    
+    [Tooltip("Text displaying end session feedback content (legacy - can be null if using separate fields)")]
+    public TextMeshProUGUI endSessionFeedbackText;
+    
+    [Tooltip("Button to close end session feedback panel and return to home screen")]
+    public Button closeEndSessionFeedbackButton;
+    
+    [Header("Dynamic Value Displays (Numbers Only)")]
+    [Tooltip("Score value display (just the number, e.g., '85.5')")]
+    public TextMeshProUGUI scoreValueText;
+    
+    [Tooltip("Duration minutes display (e.g., '32')")]
+    public TextMeshProUGUI durationMinutesText;
+    
+    [Tooltip("Duration seconds display (e.g., '00')")]
+    public TextMeshProUGUI durationSecondsText;
+    
+    [Tooltip("Positive actions count (e.g., '5')")]
+    public TextMeshProUGUI positiveActionsText;
+    
+    [Tooltip("Negative actions count (e.g., '2')")]
+    public TextMeshProUGUI negativeActionsText;
+    
+    [Tooltip("Total actions count (e.g., '7')")]
+    public TextMeshProUGUI totalActionsText;
+    
+    [Tooltip("Average engagement percentage (e.g., '75')")]
+    public TextMeshProUGUI engagementPercentageText;
+    
+    [Tooltip("Disruptions count (e.g., '3')")]
+    public TextMeshProUGUI disruptionsText;
+    
+    [Tooltip("Grade/Performance text (e.g., 'טוב מאוד - עבודה טובה!')")]
+    public TextMeshProUGUI gradeText;
+    
+    [Header("Optional Enhanced UI Elements")]
+    [Tooltip("Optional: Score display text (large, prominent)")]
+    public TextMeshProUGUI scoreDisplayText;
+    
+    [Tooltip("Optional: Score progress bar/slider")]
+    public Slider scoreProgressBar;
+    
+    [Tooltip("Optional: Image component for panel background (for color changes)")]
+    public Image endSessionPanelBackground;
+    
+    [Tooltip("Optional: Title text for the feedback panel")]
+    public TextMeshProUGUI endSessionTitleText;
+    
+    [Tooltip("Optional: Slider/progress bar for the title area (shows score progress)")]
+    public Slider titleScoreSlider;
+
     [Header("Action Menu")]
     public GameObject actionMenu;
     public Transform actionMenuContainer;
 
     [Header("Session Info")]
     private float sessionStartTime;
+    
+    [Header("Session Summary State")]
+    [Tooltip("Stored session report - calculated once when session ends, never updates")]
+    private SessionReport storedSessionReport;
+    [Tooltip("Whether the session summary has been calculated and is now static")]
+    private bool isSessionSummaryStatic = false;
 
     
 
@@ -70,6 +132,10 @@ public class TeacherUI : MonoBehaviour
     void Start()
     {
         sessionStartTime = Time.time;
+        
+        // Reset session summary state for new session
+        isSessionSummaryStatic = false;
+        storedSessionReport = null;
 
         // Wire up button listeners
         SetupButtons();
@@ -80,6 +146,14 @@ public class TeacherUI : MonoBehaviour
 
         if (actionMenu != null)
             actionMenu.SetActive(false);
+
+        // Hide end session feedback panel initially
+        if (endSessionFeedbackPanel != null)
+            endSessionFeedbackPanel.SetActive(false);
+
+        // Setup close button for end session feedback panel
+        if (closeEndSessionFeedbackButton != null)
+            closeEndSessionFeedbackButton.onClick.AddListener(CloseEndSessionFeedbackPanel);
 
         // Set default text for selected student
         if (selectedStudentText != null && string.IsNullOrEmpty(selectedStudentText.text))
@@ -114,6 +188,9 @@ public class TeacherUI : MonoBehaviour
 
         if (switchPlacesButton != null)
             switchPlacesButton.onClick.AddListener(OnSwitchPlacesButtonClicked);
+
+        if (endSessionButton != null)
+            endSessionButton.onClick.AddListener(OnEndSessionButtonClicked);
     }
 
     /// <summary>
@@ -211,10 +288,23 @@ public class TeacherUI : MonoBehaviour
                         // Check if we hit a seat/spawn point
                         Transform hitTransform = hit.collider.transform;
 
-                        // Check if the hit object is tagged as a seat or has "Seat" or "SpawnPoint" in its name
-                        if (hitTransform.CompareTag("Seat") ||
-                            hitTransform.name.Contains("Seat") ||
-                            hitTransform.name.Contains("SpawnPoint"))
+                        // Check if the hit object has "Seat" or "SpawnPoint" in its name
+                        // Also check parent objects in case the collider is a child
+                        bool isSeatOrSpawnPoint = hitTransform.name.Contains("Seat") || 
+                                                  hitTransform.name.Contains("SpawnPoint");
+                        
+                        // If not found in current transform, check parent
+                        if (!isSeatOrSpawnPoint && hitTransform.parent != null)
+                        {
+                            isSeatOrSpawnPoint = hitTransform.parent.name.Contains("Seat") || 
+                                                hitTransform.parent.name.Contains("SpawnPoint");
+                            if (isSeatOrSpawnPoint)
+                            {
+                                hitTransform = hitTransform.parent;
+                            }
+                        }
+
+                        if (isSeatOrSpawnPoint)
                         {
                             // Only allow seat selection if we already have a first student
                             if (firstStudentForSwap != null)
@@ -753,29 +843,383 @@ public class TeacherUI : MonoBehaviour
     }
 
     /// <summary>
-    /// End session and show summary
+    /// Handle end session button click
     /// </summary>
-    public void EndSession()
+    void OnEndSessionButtonClicked()
     {
-        SessionReport report = classroomManager.EndSession();
-        ShowSessionSummary(report);
+        EndSession();
     }
 
     /// <summary>
-    /// Display session performance summary
+    /// End session and show summary (calculated once, becomes static)
+    /// </summary>
+    public void EndSession()
+    {
+        // Calculate report once and store it - summary becomes static after this
+        storedSessionReport = classroomManager.EndSession();
+        isSessionSummaryStatic = true;
+        ShowSessionSummary(storedSessionReport);
+    }
+
+    /// <summary>
+    /// Display session performance summary in feedback panel with enhanced UI
+    /// Summary is static - calculated once when session ends, never updates
+    /// Updates only the dynamic numbers, static text should be pre-written in Unity
     /// </summary>
     void ShowSessionSummary(SessionReport report)
     {
-        string summary = $"השלמת שיעור\n\n" +
-                        $"ציון: {report.score:F1}/100\n" +
-                        $"משך זמן: {report.sessionData.duration:F1} שניות\n" +
-                        $"סך פעולות: {report.totalActions}\n" +
-                        $"חיוביות: {report.positiveActions} | שליליות: {report.negativeActions}\n" +
-                        $"מעורבות ממוצעת: {report.averageEngagement:P0}\n" +
-                        $"הפרעות: {report.totalDisruptions}\n\n" +
-                        GetPerformanceGrade(report.score);
+        // Ensure we're using the stored static report if summary has been calculated
+        if (isSessionSummaryStatic && storedSessionReport != null)
+        {
+            report = storedSessionReport;
+        }
+        
+        if (endSessionFeedbackPanel == null)
+        {
+            // Fallback to old feedback method if panel not assigned
+            if (endSessionFeedbackText != null)
+            {
+                string fallbackSummary = $"השלמת שיעור\n\n" +
+                                $"ציון: {report.score:F1}/100\n" +
+                                $"משך זמן: {report.sessionData.duration:F1} שניות\n" +
+                                $"סך פעולות: {report.totalActions}\n" +
+                                $"חיוביות: {report.positiveActions} | שליליות: {report.negativeActions}\n" +
+                                $"מעורבות ממוצעת: {report.averageEngagement:P0}\n" +
+                                $"הפרעות: {report.totalDisruptions}\n\n" +
+                                GetPerformanceGrade(report.score);
+                ShowFeedback(fallbackSummary, Color.cyan);
+            }
+            return;
+        }
 
-        ShowFeedback(summary, Color.cyan);
+        // Get color scheme based on performance
+        Color scoreColor = GetScoreColor(report.score);
+        Color panelTint = GetPanelTintColor(report.score);
+        string gradeTextValue = GetPerformanceGrade(report.score);
+        string gradeEmoji = GetPerformanceEmoji(report.score);
+
+        // Format duration
+        int minutes = Mathf.FloorToInt(report.sessionData.duration / 60f);
+        int seconds = Mathf.FloorToInt(report.sessionData.duration % 60f);
+
+        // Update dynamic number fields (only numbers, text is pre-written in Unity)
+        UpdateDynamicValues(report, minutes, seconds, scoreColor, gradeTextValue);
+
+        // Update optional enhanced UI elements
+        UpdateOptionalUIElements(report, scoreColor, panelTint, gradeEmoji);
+
+        // Legacy: Update old feedback text if still using it
+        if (endSessionFeedbackText != null && 
+            scoreValueText == null && durationMinutesText == null) // Only if not using new system
+        {
+            string summary = BuildEnhancedSummary(report, minutes, seconds, scoreColor, gradeTextValue, gradeEmoji);
+            endSessionFeedbackText.isRightToLeftText = true;
+            endSessionFeedbackText.alignment = TMPro.TextAlignmentOptions.Right;
+            endSessionFeedbackText.text = summary;
+        }
+
+        // Hide any checkbox/box UI elements in the panel
+        HideCheckboxElements();
+        
+        // Show panel
+        endSessionFeedbackPanel.SetActive(true);
+    }
+    
+    /// <summary>
+    /// Hide checkbox/box UI elements (Toggle components or Image components used as boxes) in the session summary panel
+    /// </summary>
+    void HideCheckboxElements()
+    {
+        if (endSessionFeedbackPanel == null) return;
+        
+        // Find and disable all Toggle components (checkboxes) that are not interactive
+        Toggle[] toggles = endSessionFeedbackPanel.GetComponentsInChildren<Toggle>(true);
+        foreach (Toggle toggle in toggles)
+        {
+            // Only hide if it's not part of an interactive element (like a button)
+            if (toggle.GetComponent<Button>() == null)
+            {
+                toggle.gameObject.SetActive(false);
+            }
+        }
+        
+        // Find and disable Image components that are likely box/checkbox indicators
+        // Look for small square images that appear to be list markers
+        Image[] images = endSessionFeedbackPanel.GetComponentsInChildren<Image>(true);
+        foreach (Image img in images)
+        {
+            // Skip if it's part of an interactive element
+            if (img.GetComponent<Button>() != null || img.GetComponent<Toggle>() != null)
+                continue;
+                
+            // Skip if it's the panel background
+            if (img == endSessionPanelBackground)
+                continue;
+            
+            RectTransform rect = img.rectTransform;
+            if (rect != null)
+            {
+                // Check if it's a small square (likely a box/checkbox indicator)
+                // Look for squares that are roughly 10-30 pixels in size
+                float width = Mathf.Abs(rect.sizeDelta.x);
+                float height = Mathf.Abs(rect.sizeDelta.y);
+                
+                // If it's a small square and roughly square-shaped
+                if (width > 5f && width < 35f && height > 5f && height < 35f)
+                {
+                    float aspectRatio = width / height;
+                    if (aspectRatio > 0.7f && aspectRatio < 1.3f) // Roughly square
+                    {
+                        // Check if it has no text child (likely just a decorative box)
+                        if (img.GetComponentInChildren<TextMeshProUGUI>() == null && 
+                            img.GetComponentInChildren<Text>() == null)
+                        {
+                            img.gameObject.SetActive(false);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Update only the dynamic number values (text labels are pre-written in Unity)
+    /// Numbers are displayed LTR (left-to-right) even in RTL context
+    /// </summary>
+    void UpdateDynamicValues(SessionReport report, int minutes, int seconds, Color scoreColor, string gradeTextValue)
+    {
+        // Score value
+        if (scoreValueText != null)
+        {
+            scoreValueText.text = $"{report.score:F1}";
+            scoreValueText.color = scoreColor;
+            scoreValueText.isRightToLeftText = false; // Numbers are LTR
+        }
+
+        // Duration
+        if (durationMinutesText != null)
+        {
+            durationMinutesText.text = $"{minutes:00}";
+            durationMinutesText.isRightToLeftText = false; // Numbers are LTR
+        }
+        if (durationSecondsText != null)
+        {
+            durationSecondsText.text = $"{seconds:00}";
+            durationSecondsText.isRightToLeftText = false; // Numbers are LTR
+        }
+
+        // Actions
+        if (positiveActionsText != null)
+        {
+            positiveActionsText.text = $"{report.positiveActions}";
+            positiveActionsText.isRightToLeftText = false; // Numbers are LTR
+        }
+        if (negativeActionsText != null)
+        {
+            negativeActionsText.text = $"{report.negativeActions}";
+            negativeActionsText.isRightToLeftText = false; // Numbers are LTR
+        }
+        if (totalActionsText != null)
+        {
+            totalActionsText.text = $"{report.totalActions}";
+            totalActionsText.isRightToLeftText = false; // Numbers are LTR
+        }
+
+        // Engagement
+        if (engagementPercentageText != null)
+        {
+            engagementPercentageText.text = $"{Mathf.RoundToInt(report.averageEngagement * 100f):00}";
+            engagementPercentageText.color = GetColorFromHex(GetEngagementColor(report.averageEngagement));
+            engagementPercentageText.isRightToLeftText = false; // Numbers are LTR
+        }
+
+        // Disruptions
+        if (disruptionsText != null)
+        {
+            disruptionsText.text = $"{report.totalDisruptions}";
+            disruptionsText.color = GetColorFromHex(GetDisruptionColor(report.totalDisruptions));
+            disruptionsText.isRightToLeftText = false; // Numbers are LTR
+        }
+
+        // Grade text
+        if (gradeText != null)
+        {
+            gradeText.text = gradeTextValue;
+            gradeText.color = scoreColor;
+        }
+    }
+
+    /// <summary>
+    /// Update optional enhanced UI elements
+    /// </summary>
+    void UpdateOptionalUIElements(SessionReport report, Color scoreColor, Color panelTint, string gradeEmoji)
+    {
+        // Update title if available - include score in title
+        if (endSessionTitleText != null)
+        {
+            endSessionTitleText.text = $"{gradeEmoji} סיכום שיעור - ציון: {report.score:F1}/100 {gradeEmoji}";
+            endSessionTitleText.color = scoreColor;
+        }
+        
+        // Update title slider if available
+        if (titleScoreSlider != null)
+        {
+            titleScoreSlider.value = report.score / 100f;
+            // Set color based on score
+            var colors = titleScoreSlider.colors;
+            colors.normalColor = scoreColor;
+            titleScoreSlider.colors = colors;
+        }
+
+        // Update score display if available
+        if (scoreDisplayText != null)
+        {
+            scoreDisplayText.text = $"<size=48><b><color=#{ColorUtility.ToHtmlStringRGB(scoreColor)}>{report.score:F1}</color></b></size>\n<size=20>/100</size>";
+            scoreDisplayText.isRightToLeftText = true;
+            scoreDisplayText.alignment = TMPro.TextAlignmentOptions.Center;
+        }
+
+        // Update score progress bar if available
+        if (scoreProgressBar != null)
+        {
+            scoreProgressBar.value = report.score / 100f;
+            // Set color based on score
+            var colors = scoreProgressBar.colors;
+            colors.normalColor = scoreColor;
+            scoreProgressBar.colors = colors;
+        }
+
+        // Update panel background color if available
+        if (endSessionPanelBackground != null)
+        {
+            endSessionPanelBackground.color = panelTint;
+        }
+    }
+
+    /// <summary>
+    /// Convert hex color string to Color
+    /// </summary>
+    Color GetColorFromHex(string hex)
+    {
+        if (ColorUtility.TryParseHtmlString($"#{hex}", out Color color))
+        {
+            return color;
+        }
+        return Color.white; // Fallback
+    }
+
+    /// <summary>
+    /// Build enhanced summary text with colors and visual formatting
+    /// </summary>
+    string BuildEnhancedSummary(SessionReport report, int minutes, int seconds, Color scoreColor, string gradeText, string gradeEmoji)
+    {
+        // Color codes for different metrics (using proper hex format without # for TextMeshPro)
+        string positiveColor = "4CAF50"; // Green
+        string negativeColor = "F44336"; // Red
+        string neutralColor = "2196F3"; // Blue
+        string warningColor = "FF9800"; // Orange
+        string scoreColorHex = ColorUtility.ToHtmlStringRGB(scoreColor);
+
+        // Build summary with rich text formatting (TextMeshPro uses color=#RRGGBB format)
+        string summary = $"<size=28><b><color=#{scoreColorHex}>ציון: {report.score:F1}/100</color></b></size>\n\n" +
+                        $"<size=22><b>{gradeEmoji} {gradeText}</b></size>\n\n" +
+                        $"<color=#{neutralColor}>⏱ <b>משך זמן:</b></color> {minutes:00}:{seconds:00}\n\n" +
+                        $"<color=#{neutralColor}>📊 <b>סטטיסטיקות פעולות:</b></color>\n" +
+                        $"   <color=#{positiveColor}>✓ פעולות חיוביות:</color> <b>{report.positiveActions}</b>\n" +
+                        $"   <color=#{negativeColor}>✗ פעולות שליליות:</color> <b>{report.negativeActions}</b>\n" +
+                        $"   <color=#{neutralColor}>📝 סך פעולות:</color> <b>{report.totalActions}</b>\n\n" +
+                        $"<color=#{neutralColor}>📈 <b>ביצועי כיתה:</b></color>\n" +
+                        $"   <color=#{GetEngagementColor(report.averageEngagement)}>📚 מעורבות ממוצעת:</color> <b>{report.averageEngagement:P0}</b>\n" +
+                        $"   <color=#{GetDisruptionColor(report.totalDisruptions)}>⚠ הפרעות:</color> <b>{report.totalDisruptions}</b>";
+
+        return summary;
+    }
+
+    /// <summary>
+    /// Get color based on score
+    /// </summary>
+    Color GetScoreColor(float score)
+    {
+        if (score >= 90) return new Color(0.2f, 0.8f, 0.2f); // Green - Excellent
+        if (score >= 80) return new Color(0.4f, 0.9f, 0.4f); // Light Green - Very Good
+        if (score >= 70) return new Color(1f, 0.8f, 0.2f); // Yellow - Good
+        if (score >= 60) return new Color(1f, 0.6f, 0.2f); // Orange - Sufficient
+        return new Color(1f, 0.3f, 0.3f); // Red - Failed
+    }
+
+    /// <summary>
+    /// Get panel background tint color based on score
+    /// </summary>
+    Color GetPanelTintColor(float score)
+    {
+        Color baseColor = new Color(0.1f, 0.1f, 0.15f, 0.95f); // Dark blue-gray
+        Color scoreColor = GetScoreColor(score);
+        
+        // Blend base color with score color (20% tint)
+        return Color.Lerp(baseColor, scoreColor, 0.2f);
+    }
+
+    /// <summary>
+    /// Get color for engagement level
+    /// </summary>
+    string GetEngagementColor(float engagement)
+    {
+        if (engagement >= 0.8f) return "4CAF50"; // Green
+        if (engagement >= 0.6f) return "FFC107"; // Yellow
+        if (engagement >= 0.4f) return "FF9800"; // Orange
+        return "F44336"; // Red
+    }
+
+    /// <summary>
+    /// Get color for disruption count
+    /// </summary>
+    string GetDisruptionColor(int disruptions)
+    {
+        if (disruptions <= 2) return "4CAF50"; // Green
+        if (disruptions <= 5) return "FFC107"; // Yellow
+        if (disruptions <= 8) return "FF9800"; // Orange
+        return "F44336"; // Red
+    }
+
+    /// <summary>
+    /// Get emoji based on performance
+    /// </summary>
+    string GetPerformanceEmoji(float score)
+    {
+        if (score >= 90) return "🌟"; // Star - Excellent
+        if (score >= 80) return "⭐"; // Star - Very Good
+        if (score >= 70) return "👍"; // Thumbs up - Good
+        if (score >= 60) return "📝"; // Memo - Sufficient
+        return "📚"; // Books - Needs improvement
+    }
+
+    /// <summary>
+    /// Close end session feedback panel and return to teacher home screen
+    /// </summary>
+    void CloseEndSessionFeedbackPanel()
+    {
+        if (endSessionFeedbackPanel != null)
+            endSessionFeedbackPanel.SetActive(false);
+
+        // Return to teacher home screen
+        SceneManager.LoadScene("TeacherHomeScreen");
+    }
+    
+    /// <summary>
+    /// Get the stored static session report (calculated once when session ended)
+    /// Returns null if session hasn't ended yet
+    /// </summary>
+    public SessionReport GetStoredSessionReport()
+    {
+        return isSessionSummaryStatic ? storedSessionReport : null;
+    }
+    
+    /// <summary>
+    /// Check if session summary is static (has been calculated and won't update)
+    /// </summary>
+    public bool IsSessionSummaryStatic()
+    {
+        return isSessionSummaryStatic;
     }
 
     string GetPerformanceGrade(float score)

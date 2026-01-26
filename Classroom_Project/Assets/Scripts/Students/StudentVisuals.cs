@@ -350,14 +350,30 @@ public class StudentReactionAnimator : MonoBehaviour
     /// </summary>
     public void RaiseHand()
     {
-        if (animator == null) return;
+        if (animator == null)
+        {
+            Debug.LogWarning($"[StudentReactionAnimator] Animator is null for {studentAgent?.studentName ?? "Unknown"}. Cannot trigger raise hand.");
+            return;
+        }
 
-        animator.SetTrigger(PARAM_RAISE_HAND);
-        isRaisingHand = true;
-        Debug.Log($"[StudentReactionAnimator] {studentAgent.studentName} raised hand");
+        // Check if the trigger parameter exists
+        bool hasParameter = HasAnimatorParameter(PARAM_RAISE_HAND, AnimatorControllerParameterType.Trigger);
+        
+        if (hasParameter)
+        {
+            animator.SetTrigger(PARAM_RAISE_HAND);
+            isRaisingHand = true;
+            Debug.Log($"[StudentReactionAnimator] {studentAgent?.studentName ?? "Student"} raised hand - trigger set successfully");
 
-        // Reset flag after animation duration
-        StartCoroutine(ResetRaiseHandAfterDelay(quickReactionDuration));
+            // Reset flag after animation duration
+            StartCoroutine(ResetRaiseHandAfterDelay(quickReactionDuration));
+        }
+        else
+        {
+            Debug.LogWarning($"[StudentReactionAnimator] WARNING: 'RaiseHand' trigger parameter not found in Animator Controller for {studentAgent?.studentName ?? "Student"}. " +
+                           $"Please add a Trigger parameter named 'RaiseHand' to the Animator Controller. " +
+                           $"See RAISE_HAND_ANIMATION_SETUP.md for setup instructions.");
+        }
     }
 
     private IEnumerator ResetRaiseHandAfterDelay(float delay)

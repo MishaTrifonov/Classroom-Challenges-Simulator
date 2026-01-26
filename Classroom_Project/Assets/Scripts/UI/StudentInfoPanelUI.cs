@@ -162,7 +162,10 @@ public class StudentInfoPanelUI : MonoBehaviour
         if (label != null)
         {
             string levelDescription = emotions.GetEmotionLevelDescription(value);
-            label.text = $"{emotionName}: {value:F1}/10 ({levelDescription})";
+            // Use Left-to-Right Override (LRO) to force LTR direction for the entire number expression
+            // This ensures "value/10" displays correctly even in RTL context
+            string numberExpression = "\u202D" + value.ToString("F1") + "/10\u202C";
+            label.text = $"{emotionName}: {numberExpression} ({levelDescription})";
             label.color = emotions.GetEmotionColor(value);
         }
     }

@@ -33,16 +33,19 @@ public class StudentResponseBubble : MonoBehaviour
     public float minWidth = 12f;
 
     [Tooltip("Maximum width of the bubble")]
-    public float maxWidth = 24f;
+    public float maxWidth = 10f;
 
     [Tooltip("Padding around text")]
     public Vector2 textPadding = new Vector2(4f, 3f);
 
     [Tooltip("Width for eager/preview bubbles")]
-    public float eagerBubbleWidth = 18f;
+    public float eagerBubbleWidth = 10f;
 
     [Tooltip("Max width for full answer bubbles")]
-    public float answerBubbleMaxWidth = 16f;
+    public float answerBubbleMaxWidth = 10f;
+
+    [Tooltip("Max height for full answer bubbles")]
+    public float answerBubbleMaxHeight = 10f;
 
     [Header("Styling")]
     [Tooltip("Background color of the bubble")]
@@ -52,10 +55,10 @@ public class StudentResponseBubble : MonoBehaviour
     public Color textColor = new Color(0.2f, 0.2f, 0.2f, 1f);
 
     [Tooltip("Font size")]
-    public int fontSize = 12;
+    public int fontSize = 2;
 
     [Tooltip("Font size for eager/preview text")]
-    public int eagerFontSize = 14;
+    public int eagerFontSize = 2;
 
     [Header("Auto-hide")]
     [Tooltip("Seconds after which the full response bubble is hidden")]
@@ -270,9 +273,13 @@ public class StudentResponseBubble : MonoBehaviour
 
             // Set width (clamped to min/max for full answers)
             float width = Mathf.Clamp(textWidth + textPadding.x * 2, minWidth, answerBubbleMaxWidth);
-            float height = Mathf.Max(16f, textHeight + textPadding.y * 2);
+            float height = Mathf.Clamp(textHeight + textPadding.y * 2, 16f, answerBubbleMaxHeight);
 
             bubbleRect.sizeDelta = new Vector2(width, height);
+
+            // Log bubble size and response text
+            string studentName = transform.name;
+            Debug.Log($"[StudentResponseBubble] {studentName} - Bubble Size: {width:F2} x {height:F2} | Response Text: \"{response}\"");
         }
 
         // Show the bubble

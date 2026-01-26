@@ -242,6 +242,11 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
             "good job", "well done", "excellent", "great", "amazing", "perfect", "bravo"
         };
 
+        string[] focusKeywords = {
+            "להיות איתי בבקשה", "להיות איתי", "תתרכז", "תתרכזי", "תתרכזו", "תתמקד", "תתמקדי", "תתמקדו",
+            "be with me please", "be with me", "focus", "pay attention", "concentrate"
+        };
+
         foreach (string keyword in disciplineKeywords)
         {
             if (lowerText.Contains(keyword))
@@ -262,6 +267,33 @@ public class WebSpeechClassroomIntegration : MonoBehaviour
                 ShowStudentEmotionalReaction(student, "praise");
                 if (logCommands)
                     Debug.Log($"[VoiceCommand] Praised {student.studentName} - student feels happy");
+                return true;
+            }
+        }
+
+        // Check for focus commands - change from Distracted to Listening
+        foreach (string keyword in focusKeywords)
+        {
+            if (lowerText.Contains(keyword))
+            {
+                // Only change state if student is currently Distracted
+                if (student.currentState == StudentState.Distracted)
+                {
+                    student.TransitionToState(StudentState.Listening);
+                    if (logCommands)
+                        Debug.Log($"[VoiceCommand] {student.studentName} changed from Distracted to Listening");
+                    
+                    // Show positive reaction
+                    var bubble = student.GetComponentInChildren<StudentResponseBubble>();
+                    if (bubble != null)
+                    {
+                        bubble.ShowEagerBubble("בסדר");
+                    }
+                }
+                else if (logCommands)
+                {
+                    Debug.Log($"[VoiceCommand] Focus command for {student.studentName}, but student is not Distracted (current: {student.currentState})");
+                }
                 return true;
             }
         }

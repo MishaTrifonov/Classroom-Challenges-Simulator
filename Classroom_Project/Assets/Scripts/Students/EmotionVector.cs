@@ -187,6 +187,25 @@ public class EmotionVector
     }
 
     /// <summary>
+    /// Format a number to display in English numerals (even in RTL text)
+    /// </summary>
+    private string FormatEnglishNumber(float value, string format = "F1")
+    {
+        // Use Left-to-Right Mark (LRM) to force English numerals in RTL text
+        return "\u200E" + value.ToString(format) + "\u200E";
+    }
+
+    /// <summary>
+    /// Format a number with "/10" suffix, ensuring proper LTR display in RTL text
+    /// </summary>
+    private string FormatEmotionValue(float value, string format = "F1")
+    {
+        // Use Left-to-Right Override (LRO) to force LTR direction for the entire expression
+        // This ensures "value/10" displays correctly even in RTL context
+        return "\u202D" + value.ToString(format) + "/10\u202C";
+    }
+
+    /// <summary>
     /// Get a visual bar representation of an emotion value
     /// </summary>
     private string GetEmotionBar(float value)
@@ -194,7 +213,7 @@ public class EmotionVector
         int filledBlocks = Mathf.RoundToInt(value);
         int emptyBlocks = 10 - filledBlocks;
         string bar = new string('█', filledBlocks) + new string('░', emptyBlocks);
-        return $"{bar} {value:F1}/10";
+        return $"{bar} {FormatEmotionValue(value)}";
     }
 
     /// <summary>
@@ -226,7 +245,7 @@ public class EmotionVector
     public string GetEmotionDisplay(string emotionName, float value)
     {
         string level = GetEmotionLevelDescription(value);
-        return $"{emotionName}: {value:F1}/10 ({level})";
+        return $"{emotionName}: {FormatEmotionValue(value)} ({level})";
     }
 
     /// <summary>
@@ -234,9 +253,9 @@ public class EmotionVector
     /// </summary>
     public string ToCompactDisplay()
     {
-        return $"😊 שמחה: {Happiness:F1} | 😢 עצב: {Sadness:F1}\n" +
-               $"😤 תסכול: {Frustration:F1} | 😴 שעמום: {Boredom:F1}\n" +
-               $"😠 כעס: {Anger:F1}";
+        return $"😊 שמחה: {FormatEnglishNumber(Happiness)} | 😢 עצב: {FormatEnglishNumber(Sadness)}\n" +
+               $"😤 תסכול: {FormatEnglishNumber(Frustration)} | 😴 שעמום: {FormatEnglishNumber(Boredom)}\n" +
+               $"😠 כעס: {FormatEnglishNumber(Anger)}";
     }
 }
 

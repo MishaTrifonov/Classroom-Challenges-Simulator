@@ -422,7 +422,7 @@ public class StudentAgent : MonoBehaviour
     /// <summary>
     /// Change to a new behavioral state
     /// </summary>
-    void TransitionToState(StudentState newState)
+    public void TransitionToState(StudentState newState)
     {
         previousState = currentState;
         currentState = newState;
@@ -572,11 +572,42 @@ public class StudentAgent : MonoBehaviour
     /// </summary>
     public void RaiseHand()
     {
-        Debug.Log($"{studentName} raised hand");
+        Debug.Log($"[StudentAgent] {studentName} raised hand");
         
         if (animator != null)
         {
-            animator.SetTrigger("RaiseHand");
+            // Check if the trigger parameter exists
+            bool hasParameter = false;
+            foreach (AnimatorControllerParameter param in animator.parameters)
+            {
+                if (param.name == "RaiseHand" && param.type == AnimatorControllerParameterType.Trigger)
+                {
+                    hasParameter = true;
+                    break;
+                }
+            }
+            
+            if (hasParameter)
+            {
+                animator.SetTrigger("RaiseHand");
+                Debug.Log($"[StudentAgent] RaiseHand trigger set successfully for {studentName}");
+            }
+            else
+            {
+                Debug.LogWarning($"[StudentAgent] WARNING: 'RaiseHand' trigger parameter not found in Animator Controller for {studentName}. " +
+                               $"Please add a Trigger parameter named 'RaiseHand' to the Animator Controller. " +
+                               $"See RAISE_HAND_ANIMATION_SETUP.md for setup instructions.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[StudentAgent] WARNING: Animator component is null for {studentName}. Cannot trigger raise hand animation.");
+        }
+        
+        // Also try using StudentReactionAnimator if available (preferred method)
+        if (reactionAnimator != null)
+        {
+            reactionAnimator.RaiseHand();
         }
         
         hasAnswer = false; // Reset after raising hand
