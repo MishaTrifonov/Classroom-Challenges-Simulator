@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
@@ -193,10 +194,30 @@ public class ScenarioSelectionUI : MonoBehaviour
         if (startSimulationButton != null)
             startSimulationButton.interactable = false;
 
-        // Get available scenarios
-        availableScenarios = scenarioLoader.GetAvailableScenarios();
 
-        if (availableScenarios == null || availableScenarios.Count == 0)
+        // Get available scenarios
+        var allScenarios = scenarioLoader.GetAvailableScenarios();
+        availableScenarios = new List<string>();
+
+        // Filter by allowedScenarios if set
+        var allowed = (authManager != null && authManager.currentUser != null && authManager.currentUser.allowedScenarios != null && authManager.currentUser.allowedScenarios.Length > 0)
+            ? new HashSet<string>(authManager.currentUser.allowedScenarios, StringComparer.OrdinalIgnoreCase)
+            : null;
+
+        foreach (var scenarioFileName in allScenarios)
+        {
+            // Remove .json for matching if needed
+            string scenarioKey = scenarioFileName;
+            if (scenarioKey.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                scenarioKey = scenarioKey.Substring(0, scenarioKey.Length - 5);
+
+            if (allowed == null || allowed.Contains(scenarioKey) || allowed.Contains(scenarioFileName))
+            {
+                availableScenarios.Add(scenarioFileName);
+            }
+        }
+
+        if (availableScenarios.Count == 0)
         {
             Debug.LogWarning("No scenarios found!");
             CreateNoScenariosMessage();

@@ -979,6 +979,7 @@ public class ScenarioConfig
     public string scenarioName;
     public string description;
     public string difficulty;
+    public string assignedTeacherUsername;
     public List<StudentProfile> studentProfiles;
 }
 

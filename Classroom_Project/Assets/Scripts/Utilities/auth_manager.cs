@@ -3,6 +3,7 @@ using UnityEngine.Networking;
 using System;
 using System.Collections;
 using System.Text;
+using System.Collections.Generic;
 
 public class AuthenticationManager : MonoBehaviour
 {
@@ -224,6 +225,68 @@ public class AuthenticationManager : MonoBehaviour
         }
     }
 
+    public IEnumerator FetchUsersCoroutine(
+        string search,
+        int? role,
+        int limit,
+        Action<UserListResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (limit <= 0) limit = 20;
+
+        string url = CombineUrl(apiBaseUrl, "/api/users");
+        var queryParts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            queryParts.Add("search=" + UnityWebRequest.EscapeURL(search.Trim()));
+
+        if (role.HasValue)
+            queryParts.Add("role=" + role.Value);
+
+        queryParts.Add("limit=" + limit);
+
+        if (queryParts.Count > 0)
+            url += "?" + string.Join("&", queryParts);
+
+        using (var req = UnityWebRequest.Get(url))
+        {
+            req.timeout = 15;
+
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"Fetch users failed: {req.error}");
+                onError?.Invoke("Failed to fetch users (server unreachable)");
+                yield break;
+            }
+
+            string respJson = req.downloadHandler.text;
+            Debug.Log($"Fetch users response: {respJson}");
+
+            UserListResponse response;
+            try
+            {
+                response = JsonUtility.FromJson<UserListResponse>(respJson);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed parsing users response: {e.Message}");
+                onError?.Invoke("Bad server response");
+                yield break;
+            }
+
+            if (response == null || !response.success)
+            {
+                onError?.Invoke(response != null ? (response.message ?? "Failed to fetch users") : "Bad server response");
+                yield break;
+            }
+
+            onSuccess?.Invoke(response);
+        }
+    }
+
     public void Logout()
     {
         currentUser = null;
@@ -281,5 +344,13 @@ public class RegisterResponse
 {
     public bool success;
     public string message;
+}
+
+[System.Serializable]
+public class UserListResponse
+{
+    public bool success;
+    public string message;
+    public UserModel[] users;
 }
 

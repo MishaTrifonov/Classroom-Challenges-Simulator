@@ -71,6 +71,16 @@ public class TeacherHomeSceneUI : MonoBehaviour
     [Tooltip("Dropdown for scenario difficulty")]
     public TMP_Dropdown difficultyDropdown;
 
+    [Header("Teacher Assignment")]
+    [Tooltip("Input field to search/select a teacher (username/full name)")]
+    public TMP_InputField teacherSearchInput;
+
+    [Tooltip("Dropdown showing matching teachers while typing")]
+    public TMP_Dropdown teacherResultsDropdown;
+
+    [Tooltip("Optional: shows the selected teacher")]
+    public TextMeshProUGUI selectedTeacherText;
+
     [Tooltip("Button to add a new student")]
     public Button addStudentButton;
 
@@ -121,6 +131,11 @@ public class TeacherHomeSceneUI : MonoBehaviour
     private StudentProfile editingStudent = null;
     private GameObject editingStudentObject = null;
 
+    private Coroutine teacherSearchCoroutine;
+    private readonly List<UserModel> teacherSearchResults = new List<UserModel>();
+    private string selectedTeacherUsername;
+    private bool suppressTeacherSearch;
+
     void Awake()
     {
         // Hide panels initially
@@ -147,12 +162,186 @@ public class TeacherHomeSceneUI : MonoBehaviour
         // Initialize panels
         InitializePanels();
 
+        // Setup teacher selector listeners (if assigned)
+        InitializeTeacherSelector();
+
         // Update dashboard
         UpdateDashboardInfo();
         UpdateCreateScenarioButtonVisibility();
 
         // Override scenario selection logout button
         StartCoroutine(OverrideScenarioSelectionLogoutButton());
+    }
+
+    void InitializeTeacherSelector()
+    {
+        if (teacherSearchInput != null)
+        {
+            teacherSearchInput.onValueChanged.RemoveListener(OnTeacherSearchChanged);
+            teacherSearchInput.onValueChanged.AddListener(OnTeacherSearchChanged);
+        }
+
+        if (teacherResultsDropdown != null)
+        {
+            teacherResultsDropdown.onValueChanged.RemoveListener(OnTeacherDropdownChanged);
+            teacherResultsDropdown.onValueChanged.AddListener(OnTeacherDropdownChanged);
+            teacherResultsDropdown.gameObject.SetActive(false);
+        }
+
+        ClearTeacherSelection();
+    }
+
+    void ClearTeacherSelection()
+    {
+        selectedTeacherUsername = null;
+        teacherSearchResults.Clear();
+
+        if (selectedTeacherText != null)
+        {
+            selectedTeacherText.text = "";
+        }
+
+        if (teacherResultsDropdown != null)
+        {
+            teacherResultsDropdown.ClearOptions();
+            teacherResultsDropdown.gameObject.SetActive(false);
+        }
+    }
+
+    void OnTeacherSearchChanged(string input)
+    {
+        if (suppressTeacherSearch)
+            return;
+
+        selectedTeacherUsername = null;
+        if (selectedTeacherText != null)
+            selectedTeacherText.text = "";
+
+        if (teacherSearchCoroutine != null)
+        {
+            StopCoroutine(teacherSearchCoroutine);
+            teacherSearchCoroutine = null;
+        }
+
+        if (authManager == null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            if (teacherResultsDropdown != null)
+                teacherResultsDropdown.gameObject.SetActive(false);
+            return;
+        }
+
+        teacherSearchCoroutine = StartCoroutine(FetchTeacherSuggestionsAfterDelay(input.Trim()));
+    }
+
+    IEnumerator FetchTeacherSuggestionsAfterDelay(string search)
+    {
+        yield return new WaitForSeconds(0.25f);
+
+        bool done = false;
+        bool ok = false;
+        string errorMessage = "";
+        UserModel[] users = null;
+
+        // Role filtering is optional; pass null to avoid role-mapping mismatches.
+        yield return authManager.FetchUsersCoroutine(
+            search,
+            null,
+            20,
+            (resp) =>
+            {
+                users = resp != null ? resp.users : null;
+                ok = true;
+                done = true;
+            },
+            (err) =>
+            {
+                errorMessage = err;
+                ok = false;
+                done = true;
+            }
+        );
+
+        yield return new WaitUntil(() => done);
+
+        if (!ok)
+        {
+            Debug.LogWarning($"Teacher search failed: {errorMessage}");
+            if (teacherResultsDropdown != null)
+                teacherResultsDropdown.gameObject.SetActive(false);
+            yield break;
+        }
+
+        teacherSearchResults.Clear();
+        if (users != null)
+        {
+            for (int i = 0; i < users.Length; i++)
+            {
+                var u = users[i];
+                if (u == null) continue;
+                if (u.isActive == false) continue;
+                if (string.IsNullOrWhiteSpace(u.username)) continue;
+                teacherSearchResults.Add(u);
+            }
+        }
+
+        if (teacherResultsDropdown == null)
+            yield break;
+
+        teacherResultsDropdown.ClearOptions();
+
+        if (teacherSearchResults.Count == 0)
+        {
+            teacherResultsDropdown.gameObject.SetActive(false);
+            yield break;
+        }
+
+        var options = new List<TMP_Dropdown.OptionData>(teacherSearchResults.Count);
+        for (int i = 0; i < teacherSearchResults.Count; i++)
+        {
+            var u = teacherSearchResults[i];
+            string display = !string.IsNullOrWhiteSpace(u.fullName)
+                ? u.fullName
+                : u.username;
+            options.Add(new TMP_Dropdown.OptionData(display));
+        }
+
+        teacherResultsDropdown.AddOptions(options);
+        teacherResultsDropdown.value = 0;
+        teacherResultsDropdown.RefreshShownValue();
+        teacherResultsDropdown.gameObject.SetActive(true);
+    }
+
+    void OnTeacherDropdownChanged(int index)
+    {
+        if (index < 0 || index >= teacherSearchResults.Count)
+            return;
+
+        var selected = teacherSearchResults[index];
+        selectedTeacherUsername = selected.username;
+
+        if (teacherSearchInput != null)
+        {
+            suppressTeacherSearch = true;
+            teacherSearchInput.text = !string.IsNullOrWhiteSpace(selected.fullName) ? selected.fullName : selected.username;
+            suppressTeacherSearch = false;
+        }
+
+
+        if (selectedTeacherText != null)
+        {
+            string label = !string.IsNullOrWhiteSpace(selected.fullName)
+                ? $"מורה שנבחר/ה: {selected.fullName}"
+                : $"מורה שנבחר/ה: {selected.username}";
+            selectedTeacherText.text = label;
+            selectedTeacherText.isRightToLeftText = true;
+            selectedTeacherText.alignment = TextAlignmentOptions.MidlineRight;
+        }
+
+        if (teacherResultsDropdown != null)
+            teacherResultsDropdown.gameObject.SetActive(false);
     }
 
     void SetupButtonListeners()
@@ -219,19 +408,31 @@ public class TeacherHomeSceneUI : MonoBehaviour
     {
         if (studentProfilesContainer != null)
         {
-            var verticalLayout = studentProfilesContainer.GetComponent<VerticalLayoutGroup>();
-            if (verticalLayout == null)
+            var containerRect = studentProfilesContainer.GetComponent<RectTransform>();
+            if (containerRect != null)
             {
-                verticalLayout = studentProfilesContainer.gameObject.AddComponent<VerticalLayoutGroup>();
+                containerRect.anchorMin = new Vector2(0, 1);
+                containerRect.anchorMax = new Vector2(1, 1);
+                containerRect.pivot = new Vector2(0.5f, 1);
             }
-            
-            verticalLayout.spacing = 5;
-            verticalLayout.childControlHeight = true;
-            verticalLayout.childControlWidth = true;
-            verticalLayout.childForceExpandHeight = false;
-            verticalLayout.childForceExpandWidth = true;
-            verticalLayout.childAlignment = TextAnchor.UpperCenter;
-            verticalLayout.padding = new RectOffset(10, 10, 10, 10);
+
+            var gridLayout = studentProfilesContainer.GetComponent<GridLayoutGroup>();
+            if (gridLayout == null)
+            {
+                gridLayout = studentProfilesContainer.gameObject.AddComponent<GridLayoutGroup>();
+            }
+
+            gridLayout.childAlignment = TextAnchor.UpperCenter;
+            gridLayout.padding = new RectOffset(10, 10, 10, 10);
+            gridLayout.cellSize = new Vector2(350, 300);
+
+            var sizeFitter = studentProfilesContainer.GetComponent<ContentSizeFitter>();
+            if (sizeFitter == null)
+            {
+                sizeFitter = studentProfilesContainer.gameObject.AddComponent<ContentSizeFitter>();
+            }
+            sizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         }
     }
 
@@ -361,6 +562,15 @@ public class TeacherHomeSceneUI : MonoBehaviour
 
         if (creationStatusText != null)
             creationStatusText.text = "";
+
+        // Clear teacher selection
+        if (teacherSearchInput != null)
+        {
+            suppressTeacherSearch = true;
+            teacherSearchInput.text = "";
+            suppressTeacherSearch = false;
+        }
+        ClearTeacherSelection();
 
         // Clear students
         ClearStudentList();
@@ -510,14 +720,14 @@ public class TeacherHomeSceneUI : MonoBehaviour
         rectTransform.anchorMin = new Vector2(0, 1);
         rectTransform.anchorMax = new Vector2(1, 1);
         rectTransform.pivot = new Vector2(0.5f, 1);
-        rectTransform.sizeDelta = new Vector2(0, 180); // Full width, fixed height
+        rectTransform.sizeDelta = new Vector2(0, 100); // Full width, fixed height
 
         var image = itemObj.AddComponent<Image>();
         image.color = new Color(0.18f, 0.18f, 0.22f, 1f);
 
         var layoutElement = itemObj.AddComponent<LayoutElement>();
-        layoutElement.minHeight = 180;
-        layoutElement.preferredHeight = 180;
+        layoutElement.minHeight = 100;
+        layoutElement.preferredHeight = 100;
         layoutElement.flexibleWidth = 1;
 
         // Main horizontal layout
@@ -528,7 +738,7 @@ public class TeacherHomeSceneUI : MonoBehaviour
         horizontalLayout.childControlHeight = false;
         horizontalLayout.childForceExpandWidth = false;
         horizontalLayout.childForceExpandHeight = false;
-        horizontalLayout.childAlignment = TextAnchor.MiddleCenter;
+        horizontalLayout.childAlignment = TextAnchor.MiddleLeft;
 
         // Info container (vertical layout for name and stats)
         GameObject infoContainer = new GameObject("InfoContainer");
@@ -543,55 +753,54 @@ public class TeacherHomeSceneUI : MonoBehaviour
 
         var infoLayoutElement = infoContainer.AddComponent<LayoutElement>();
         infoLayoutElement.flexibleWidth = 1;
-        infoLayoutElement.minWidth = 200;
+
+        var infoRect = infoContainer.GetComponent<RectTransform>();
+        infoRect.sizeDelta = new Vector2(200, 100);
 
         // Name text
         GameObject nameObj = new GameObject("NameText");
         nameObj.transform.SetParent(infoContainer.transform, false);
         var nameText = nameObj.AddComponent<TextMeshProUGUI>();
         nameText.text = $"<b>{profile.name}</b>";
-        nameText.fontSize = 15;
+        nameText.fontSize = 20;
         nameText.fontStyle = FontStyles.Bold;
         nameText.color = new Color(1f, 1f, 1f, 1f);
-        nameText.alignment = TextAlignmentOptions.MidlineLeft;
+        nameText.alignment = TextAlignmentOptions.MidlineRight;
+        nameText.isRightToLeftText = true;
         nameText.overflowMode = TextOverflowModes.Ellipsis;
 
         var nameLayoutElement = nameObj.AddComponent<LayoutElement>();
-        nameLayoutElement.preferredHeight = 22;
+        nameLayoutElement.preferredHeight = 30;
 
         // Stats text (single line)
         GameObject statsObj = new GameObject("StatsText");
         statsObj.transform.SetParent(infoContainer.transform, false);
         var statsText = statsObj.AddComponent<TextMeshProUGUI>();
-        statsText.text = $"<size=10>Extro: <b>{profile.extroversion:F1}</b>  |  " +
-                        $"Sens: <b>{profile.sensitivity:F1}</b>  |  " +
-                        $"Rebel: <b>{profile.rebelliousness:F1}</b>  |  " +
-                        $"Acad: <b>{profile.academicMotivation:F1}</b></size>";
-        statsText.fontSize = 10;
+        statsText.text = $"<size=18>מוחצנות: <b>{profile.extroversion:F1}</b>  |  " +
+                            $"רגישות: <b>{profile.sensitivity:F1}</b>  |  " +
+                            $"מרדנות: <b>{profile.rebelliousness:F1}</b>  |  " +
+                            $"מוטיבציה: <b>{profile.academicMotivation:F1}</b>  |  " +
+                            $"אושר: <b>{profile.initialHappiness:F1}</b>  |  " +
+                            $"שעמום: <b>{profile.initialBoredom:F1}</b></size>";
+        statsText.fontSize = 18;
         statsText.color = new Color(0.85f, 0.85f, 0.85f, 1f);
-        statsText.alignment = TextAlignmentOptions.MidlineLeft;
-        statsText.overflowMode = TextOverflowModes.Ellipsis;
+        statsText.alignment = TextAlignmentOptions.MidlineRight;
+        statsText.isRightToLeftText = true;
+        statsText.overflowMode = TextOverflowModes.Overflow;
+        statsText.enableWordWrapping = true;
 
         var statsLayoutElement = statsObj.AddComponent<LayoutElement>();
-        statsLayoutElement.preferredHeight = 18;
+        statsLayoutElement.minHeight = 100;
+        statsLayoutElement.minWidth = 250;
+        statsLayoutElement.flexibleHeight = 0;
 
-        // Additional stats (second line)
-        GameObject stats2Obj = new GameObject("StatsText2");
-        stats2Obj.transform.SetParent(infoContainer.transform, false);
-        var stats2Text = stats2Obj.AddComponent<TextMeshProUGUI>();
-        stats2Text.text = $"<size=10>Happiness: <b>{profile.initialHappiness:F1}</b>  |  " +
-                         $"Boredom: <b>{profile.initialBoredom:F1}</b></size>";
-        stats2Text.fontSize = 10;
-        stats2Text.color = new Color(0.75f, 0.75f, 0.75f, 1f);
-        stats2Text.alignment = TextAlignmentOptions.MidlineLeft;
-        stats2Text.overflowMode = TextOverflowModes.Ellipsis;
-
-        var stats2LayoutElement = stats2Obj.AddComponent<LayoutElement>();
-        stats2LayoutElement.preferredHeight = 18;
+        var statsRect = statsObj.GetComponent<RectTransform>();
+        statsRect.sizeDelta = new Vector2(250, 100);
 
         // Buttons container
         GameObject buttonsContainer = new GameObject("ButtonsContainer");
         buttonsContainer.transform.SetParent(itemObj.transform, false);
+        buttonsContainer.transform.SetAsFirstSibling();
 
         var buttonsLayout = buttonsContainer.AddComponent<HorizontalLayoutGroup>();
         buttonsLayout.spacing = 6;
@@ -604,13 +813,13 @@ public class TeacherHomeSceneUI : MonoBehaviour
         buttonsLayoutElement.minWidth = 130;
         buttonsLayoutElement.preferredWidth = 130;
 
-        // Edit button
-        CreateButton(buttonsContainer.transform, "Edit", new Color(0.25f, 0.5f, 0.85f, 1f),
-            () => EditStudent(itemObj), 60, 30);
-
-        // Remove button
-        CreateButton(buttonsContainer.transform, "Remove", new Color(0.85f, 0.25f, 0.25f, 1f),
+        // Remove button (first in RTL layout)
+        CreateButton(buttonsContainer.transform, "הסרה", new Color(0.85f, 0.25f, 0.25f, 1f),
             () => RemoveStudent(itemObj), 60, 30);
+
+        // Edit button (second in RTL layout)
+        CreateButton(buttonsContainer.transform, "עריכה", new Color(0.25f, 0.5f, 0.85f, 1f),
+            () => EditStudent(itemObj), 60, 30);
 
         return itemObj;
     }
@@ -657,6 +866,7 @@ public class TeacherHomeSceneUI : MonoBehaviour
         text.fontStyle = FontStyles.Bold;
         text.color = Color.white;
         text.alignment = TextAlignmentOptions.Center;
+        text.isRightToLeftText = true;
         text.overflowMode = TextOverflowModes.Ellipsis;
 
         return buttonObj;
@@ -669,19 +879,24 @@ public class TeacherHomeSceneUI : MonoBehaviour
     {
         var nameText = studentItem.transform.Find("InfoContainer/NameText")?.GetComponent<TextMeshProUGUI>();
         if (nameText != null)
+        {
             nameText.text = $"<b>{profile.name}</b>";
+            nameText.alignment = TextAlignmentOptions.MidlineRight;
+            nameText.isRightToLeftText = true;
+        }
 
         var statsText = studentItem.transform.Find("InfoContainer/StatsText")?.GetComponent<TextMeshProUGUI>();
         if (statsText != null)
-            statsText.text = $"<size=10>Extro: <b>{profile.extroversion:F1}</b>  |  " +
-                            $"Sens: <b>{profile.sensitivity:F1}</b>  |  " +
-                            $"Rebel: <b>{profile.rebelliousness:F1}</b>  |  " +
-                            $"Acad: <b>{profile.academicMotivation:F1}</b></size>";
-
-        var stats2Text = studentItem.transform.Find("InfoContainer/StatsText2")?.GetComponent<TextMeshProUGUI>();
-        if (stats2Text != null)
-            stats2Text.text = $"<size=10>Happiness: <b>{profile.initialHappiness:F1}</b>  |  " +
-                             $"Boredom: <b>{profile.initialBoredom:F1}</b></size>";
+        {
+            statsText.text = $"<size=18>מוחצנות: <b>{profile.extroversion:F1}</b>  |  " +
+                            $"רגישות: <b>{profile.sensitivity:F1}</b>  |  " +
+                            $"מרדנות: <b>{profile.rebelliousness:F1}</b>  |  " +
+                            $"מוטיבציה: <b>{profile.academicMotivation:F1}</b>  |  " +
+                            $"אושר: <b>{profile.initialHappiness:F1}</b>  |  " +
+                            $"שעמום: <b>{profile.initialBoredom:F1}</b></size>";
+            statsText.alignment = TextAlignmentOptions.MidlineRight;
+            statsText.isRightToLeftText = true;
+        }
     }
 
     void SaveScenario()
@@ -690,6 +905,17 @@ public class TeacherHomeSceneUI : MonoBehaviour
         {
             Debug.LogError("Scenario input fields are not properly assigned!");
             return;
+        }
+
+        // If teacher assignment UI exists, require selecting a teacher from the results.
+        if (teacherSearchInput != null)
+        {
+            if (string.IsNullOrWhiteSpace(selectedTeacherUsername))
+            {
+                if (creationStatusText != null)
+                    creationStatusText.text = "יש לבחור מורה מהרשימה לפני שמירה.";
+                return;
+            }
         }
 
         string scenarioName = scenarioNameInput.text.Trim();
@@ -715,6 +941,7 @@ public class TeacherHomeSceneUI : MonoBehaviour
             scenarioName = scenarioName,
             description = scenarioDescription,
             difficulty = difficulty,
+            assignedTeacherUsername = selectedTeacherUsername,
             studentProfiles = new List<StudentProfile>()
         };
 
@@ -772,6 +999,12 @@ public class TeacherHomeSceneUI : MonoBehaviour
 
             Debug.Log($"Scenario saved to server: {fileName}");
             Invoke(nameof(CloseCreateScenarioPanel), 2f);
+
+            // Add scenario to teacher's allowedScenarios
+            if (!string.IsNullOrWhiteSpace(selectedTeacherUsername) && !string.IsNullOrWhiteSpace(scenario.scenarioName))
+            {
+                StartCoroutine(AddScenarioToTeacherAllowedScenarios(selectedTeacherUsername, scenario.scenarioName));
+            }
         }
         else
         {
@@ -780,6 +1013,44 @@ public class TeacherHomeSceneUI : MonoBehaviour
 
             Debug.LogError($"Failed to save scenario: {errorMessage}");
         }
+    }
+
+    // Call backend to add scenario to teacher's allowedScenarios
+    IEnumerator AddScenarioToTeacherAllowedScenarios(string teacherUsername, string scenarioName)
+    {
+        if (authManager == null)
+            yield break;
+
+        string url = $"{authManager.apiBaseUrl.TrimEnd('/')}/api/users/add-allowed-scenario";
+        var reqBody = new AddAllowedScenarioRequest { username = teacherUsername, scenarioName = scenarioName };
+        string json = JsonUtility.ToJson(reqBody);
+
+        using (var req = new UnityEngine.Networking.UnityWebRequest(url, "POST"))
+        {
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+            req.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(bodyRaw);
+            req.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();
+            req.SetRequestHeader("Content-Type", "application/json");
+            req.timeout = 15;
+
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityEngine.Networking.UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning($"Failed to update teacher allowedScenarios: {req.error}");
+                yield break;
+            }
+
+            string respJson = req.downloadHandler.text;
+            Debug.Log($"Teacher allowedScenarios update response: {respJson}");
+        }
+    }
+
+    [System.Serializable]
+    public class AddAllowedScenarioRequest
+    {
+        public string username;
+        public string scenarioName;
     }
 
     void DisplaySessionHistory(List<SessionHistoryEntry> history)
@@ -955,9 +1226,9 @@ public class TeacherHomeSceneUI : MonoBehaviour
         {
             authManager.Logout();
         }
-
+        
         // Load login scene
-        SceneManager.LoadScene("LoginScene"); // Change to your login scene name
+        SceneManager.LoadScene("LoginScene");
     }
 }
 
